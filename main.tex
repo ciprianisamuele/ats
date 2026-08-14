@@ -52,7 +52,7 @@
 % ============================================================
 \section{Time Series: Basic Ideas}
 
-A \key{time series} is a sequence of observations recorded sequentially in time. Unlike standard iid data, observations are typically \key{serially dependent}: \(X_t\not\!\perp X_{t-k}\).
+A \key{time series} is a sequence of observations recorded sequentially in time. The standard setup assumes an \key{equidistant time grid}; irregularly spaced observations require special treatment. Unlike standard iid data, observations are typically \key{serially dependent}: \(X_t\not\!\perp X_{t-k}\).
 
 Main goals: exploratory analysis and visualization; decomposition into deterministic and stochastic components; modeling of serial dependence; forecasting; time-series regression; process control/anomaly detection; classification and clustering.
 
@@ -60,7 +60,7 @@ Three important structures are trend, seasonality andstochastic serial dependenc
 
 \key{Trend:} systematic long-term change in the mean level, \(E[X_t]=m_t\), where \(m_t\) varies with time and is not periodic.
 
-\key{Seasonality:} deterministic repeating pattern with a fixed and known period \(p\), i.e. \(s_{t+p}=s_t\). Important: \(\boxed{\text{cyclic behavior}\neq\text{seasonality}}\). A series can display stochastic oscillations without a deterministic seasonal component.
+\key{Seasonality:} deterministic repeating pattern with a fixed and known calendar period \(p\), i.e. \(s_{t+p}=s_t\). Important: \(\boxed{\text{cyclic behavior}\neq\text{seasonality}}\). Repeating behavior without a fixed calendar period is called \key{stochastic periodicity}, not seasonality.
 
 % ============================================================
 \section{Process and Stationarity}
@@ -157,6 +157,8 @@ Differencing aims to make a non-stationary series stationary by removing trend a
 \key{First difference:} \(\boxed{Y_t=X_t-X_{t-1}}\). Instead of studying level, we study changes. If \(X_t=m_t+U_t\), \(m_t=\alpha+\beta t\), \(U_t\) stationary, then
 \(Y_t=\beta+U_t-U_{t-1}\), hence \(E[Y_t]=\beta\). Thus differencing a linear trend produces a stationary series with potentially \key{non-zero mean}.
 
+For non-seasonal non-stationarity in the mean, first-order differencing is the usual first attempt and is often sufficient; use higher order only if the differenced series still has a non-stationary mean.
+
 \key{Differencing changes dependence.} Even if \(U_t\) is iid, \(Y_t=U_t-U_{t-1}\) is not iid because consecutive differences share observations; indeed
 \(\operatorname{Cov}(Y_t,Y_{t-1})=-\operatorname{Var}(U_{t-1})\neq0\). Hence \(\boxed{\text{differencing can create artificial serial dependence}}\).
 
@@ -228,7 +230,7 @@ LOESS estimates trend through \key{local weighted regressions}. Compared with mo
 
 STL = \key{Seasonal-Trend decomposition using LOESS}; it decomposes \(X_t=\text{trend}+\text{seasonal}+\text{remainder}\). Both trend and seasonality are obtained by smoothing.
 
-In R, \texttt{decompose()} uses classical moving-average filtering for the trend, whereas \texttt{stl()} uses LOESS. With \texttt{s.window="periodic"}, STL estimates one fixed seasonal pattern across cycles (equivalently, season-specific averages after detrending).
+In R, \texttt{decompose()} uses classical moving-average filtering for the trend, whereas \texttt{stl()} uses LOESS. \texttt{stl()} reads the cycle length from the \texttt{frequency} attribute of the \texttt{ts} object: it requires \(\texttt{frequency}>1\), but not specifically 12. With \texttt{s.window="periodic"}, STL estimates one fixed seasonal pattern across cycles (equivalently, season-specific averages after detrending).
 
 Two main controls: trend window controls smoothness of trend; seasonal window controls how quickly seasonality may evolve. Larger span \(\Rightarrow\) smoother component; smaller span \(\Rightarrow\) more flexible but greater risk of overfitting. If seasonality is assumed constant, use a periodic seasonal pattern.
 
@@ -236,7 +238,7 @@ In \texttt{stl}, \(\texttt{s.window="periodic"}\) forces the same seasonal patte
 
 STL may struggle with abrupt jumps because smoothers assume a continuous, smooth underlying structure.
 
-\key{Evolving seasonality:} instead of fixed \(s_j\), STL allows \(s_{j,t}\) to evolve smoothly. Too small a smoothing span may cause excessive fluctuation: small span \(\Rightarrow\) possible overfitting.
+\key{Evolving seasonality:} instead of fixed \(s_j\), STL allows \(s_{j,t}\) to evolve smoothly. Too small a smoothing span may cause excessive fluctuation: small span \(\Rightarrow\) possible overfitting. In a monthplot, jagged year-to-year paths within the same month suggest that the seasonal window is too small.
 
 \key{Multiple seasonalities:} high-frequency series may have
 \(X_t=m_t+s_t^{(1)}+s_t^{(2)}+\cdots+R_t\), e.g. half-hourly electricity demand with daily and weekly seasonality. A seasonal period can only be identified reliably if enough complete cycles are observed.
@@ -1544,6 +1546,8 @@ Future innovations are unpredictable:
 \boxed{E[E_{n+k}\mid X_1,\ldots,X_n]=0,\quad k>0.}
 \]
 Point forecasts should therefore be accompanied by \key{prediction intervals}, describing the uncertainty of future observations.
+
+Ordinary forecast intervals are \key{pointwise}: a 95\% interval has 95\% coverage at each specified horizon separately. It is not a 95\% simultaneous band for the entire future path; joint coverage across all horizons is lower unless a simultaneous procedure is constructed.
 
 Forecasts are generally more reliable when signal/noise is high and for short horizons. Increasing horizon usually means less dependence on current observations and larger uncertainty.
 
@@ -3015,6 +3019,17 @@ I_n(\nu_k)=\frac n4(\widehat\alpha_k^2+\widehat\beta_k^2).
 \item Spectral peaks describe stochastic periodicity and do not imply deterministic seasonality.
 \end{enumerate}
 
+% ============================================================
+\section{Time Series Classification}
+
+\key{Time-series classification (TSC)} assigns one categorical label to an entire time-series segment, not to each individual time point.
+
+\key{\(k\)-nearest neighbors:} standard \(k\)NN commonly uses Euclidean distance, comparing equally indexed observations point by point. It is therefore sensitive to phase shifts, different speeds and other temporal misalignment.
+
+\key{Dynamic Time Warping (DTW)} nonlinearly warps the time axis, subject to an ordered alignment path, to match similar shapes occurring at different speeds or offsets. Using DTW distance in \(k\)NN often improves classification over Euclidean distance when misalignment is present, although improvement is not guaranteed for every dataset.
+
+\key{Deep learning:} architectures such as CNNs and RNNs can learn representations directly from raw sequences; prior manual feature extraction is not required.
+
 \end{multicols}
 
 \begin{multicols}{2}
@@ -3381,6 +3396,129 @@ The fitted models have: AR(1), \(\log L=69.88\), AIC \(-135.76\); AR(4), \(\log 
 \item An MA(\(q\)) forecast equals the global mean for horizons \(k>q\). \textbf{T}: then every innovation entering the future value is unknown and has conditional mean zero.
 \item The 95\% PI width of a stationary ARMA does not converge because extreme events become more likely at longer horizons. \textbf{F}: it increases toward a finite constant determined by unconditional variance.
 \item AR(\(p\)) forecasts are based only on the last \(p\) observations, regardless of horizon. \textbf{T}: future steps recursively use previous forecasts, which are functions of those last \(p\) values.
+\end{enumerate}
+
+% ============================================================
+\section{Exam Questions and Solutions -- Summer 2025}
+
+\subsection*{Exercise 1 -- General Properties}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Time-series observations are typically independent and identically distributed. \textbf{F}: observations are usually serially dependent.
+\item Descriptive analysis usually includes identifying trends and seasonal patterns. \textbf{T}.
+\item Descriptive analysis helps identify structure and select an appropriate stochastic model. \textbf{T}.
+\item Repeating patterns without a fixed calendar period are called stochastic periodicity rather than seasonality. \textbf{T}: seasonality has a fixed calendar period.
+\end{enumerate}
+
+\subsection*{Exercise 2 -- Processes and Stationarity}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Time-series analysis typically assumes equidistant intervals between observations. \textbf{T}.
+\item Weak stationarity is sufficient for most practical modeling and forecasting tasks. \textbf{T}, together with an ergodicity condition that allows learning from one realization.
+\item One observed time series provides full information about its underlying stochastic process. \textbf{F}: it is only one realization and does not reveal the full joint distribution.
+\item Stationarity is a property of the observed data and can be proven from one time-series plot. \textbf{F}: it belongs to the process and can only be assessed as a plausible working assumption from one realization.
+\end{enumerate}
+
+\subsection*{Exercise 3 -- Differencing and Transformations}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item First-order differencing is typically sufficient for a series that is non-stationary in its mean but has no seasonal effect. \textbf{T}: it is the usual first treatment for non-seasonal mean non-stationarity.
+\item A log transformation allows additive modeling of an originally multiplicative structure. \textbf{T}: \(\log(m_ts_tR_t)=\log m_t+\log s_t+\log R_t\).
+\item Exponentiating a forecast on the log scale yields an unbiased forecast on the original scale. \textbf{F}: it yields the median; the conditional mean requires a variance-based bias correction.
+\item Box--Cox transformations have a straightforward interpretation and are generally preferred to logs. \textbf{F}: their interpretation is less direct; the interpretable log is usually preferred when adequate.
+\end{enumerate}
+
+\subsection*{Exercise 4 -- STL}
+For the supplied STL decomposition and monthplot with evolving monthly seasonality:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item A log transformation must be applied before decomposition to stabilize variance. \textbf{F}: the displayed variance is already approximately stable.
+\item STL works only for series with exactly 12 observations per year. \textbf{F}: it works for seasonal \texttt{ts} objects with frequency greater than 1, not only monthly data.
+\item STL obtains the seasonal frequency from the \texttt{ts} object's \texttt{frequency} attribute. \textbf{T}.
+\item The seasonal smoothing parameter appears appropriate from the monthplot. \textbf{F}: the jagged within-month evolution suggests \(\texttt{s.window}=5\) is too small and overfits seasonality.
+\end{enumerate}
+
+\subsection*{Exercise 5 -- Autocorrelation Tools}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item A lag-\(h\) scatterplot of a length-\(n\) series contains \(n\) pairs \((X_t,X_{t-h})\). \textbf{F}: only \(n-h\) pairs are available.
+\item Under the White Noise assumption, correlogram spikes outside the confidence bands indicate significant dependence at the corresponding lag. \textbf{T}: the bands are pointwise and asymptotic.
+\item ACF values remain reliably interpretable when a series has strong non-stationarity such as trend. \textbf{F}: ACF theory assumes stationarity and trend can create misleading slow decay.
+\item One large outlier in an otherwise White Noise series may make the plug-in ACF appear significant at several lags. \textbf{T}: the outlier enters several lagged products and the estimator is non-robust.
+\end{enumerate}
+
+\subsection*{Exercise 6 -- Identification from ACF/PACF}
+For the two supplied length-200 series and correlograms:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Stationarity is plausible for both series. \textbf{T}: neither plot shows an evident trend or changing variance.
+\item Series A would likely benefit from differencing before fitting. \textbf{F}: its time plot shows no visible trend or seasonality requiring removal.
+\item A pure MA(\(q\)) is a valid candidate for series A. \textbf{T}: its ACF cuts off after lag 2, identifying an MA(2) candidate.
+\item The PACF of series B shows exponential decay. \textbf{F}: its PACF cuts off after lag 1, while its ACF decays exponentially, suggesting AR(1).
+\end{enumerate}
+
+\subsection*{Exercise 7 -- ARMA Properties}
+Let \(X_t=1.2X_{t-1}-0.5X_{t-2}+E_t+0.4E_{t-1}\).
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item The AR characteristic polynomial is \(1.2B-0.5B^2\). \textbf{F}: moving the AR terms to the left gives \(\Phi(B)=1-1.2B+0.5B^2\).
+\item Every stationary ARMA(\(p,q\)) process has an MA(\(\infty\)) representation. \textbf{T}: stationarity/causality of the AR part gives the convergent representation.
+\item The process is invertible regardless of the MA coefficients. \textbf{F}: invertibility requires every root of \(\Theta(z)\) to lie outside the unit circle.
+\item ARMA is often preferred to a high-order AR because it can give a similar fit with fewer parameters. \textbf{T}: it is usually more parsimonious.
+\end{enumerate}
+
+\subsection*{Exercise 8 -- ARMA Estimation}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Yule--Walker is commonly used to estimate MA models. \textbf{F}: it is an AR estimation method; MA terms contain unobserved innovations.
+\item Maximum likelihood can estimate both the AR and MA components of an ARMA model. \textbf{T}.
+\item A correctly specified ARMA model should leave residuals resembling White Noise. \textbf{T}.
+\item AIC always decreases when more AR lags are added. \textbf{F}: improved likelihood competes with a penalty for every additional parameter, so AIC can rise.
+\end{enumerate}
+
+\subsection*{Exercise 9 -- Conditional Heteroskedasticity}
+For the supplied daily log-returns, their ACF and the ACF of squared returns:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item The return ACF indicates strong serial dependence. \textbf{F}: it shows little linear autocorrelation.
+\item Persistence in the squared-return ACF is evidence of conditional heteroskedasticity. \textbf{T}: it indicates volatility clustering.
+\item An ARIMA model is suitable for modeling this volatility. \textbf{F}: ARIMA models the conditional mean and ordinarily assumes constant innovation variance.
+\item A GARCH model can capture the dynamics visible in squared returns. \textbf{T}: it models time-varying conditional variance.
+\end{enumerate}
+
+\subsection*{Exercise 10 -- Regression with AR Errors}
+For the nursing-duration OLS regression on PERIOD, BOUTS, LOCKONS and DAYNIGHT:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Including PERIOD accounts for all time-dependent structure. \textbf{F}: it can remove a trend in the mean but does not eliminate serial correlation in the errors.
+\item If predictors are not collinear, OLS estimation and inference remain valid despite autocorrelated residuals. \textbf{F}: under exogeneity point estimates remain unbiased, but they are inefficient and ordinary standard errors/tests are invalid.
+\item GLS with an AR(2) error structure is a valid next step. \textbf{T}: the residual ACF decays and the PACF cuts off after lag 2.
+\item Raw GLS residuals should resemble White Noise when the correlation structure is correct. \textbf{F}: raw residuals should retain the modeled AR(2) pattern; the corresponding innovations/whitened residuals should be White Noise.
+\end{enumerate}
+
+\subsection*{Exercise 11 -- ARIMA Forecasting}
+For forecasts from an ARIMA(1,1,1) model:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Point forecasts converge to a constant as horizon increases. \textbf{T} for the stated model without drift: forecasts of the stationary differences converge to zero.
+\item Prediction intervals widen indefinitely with forecast horizon. \textbf{T}: integration cumulatively adds future-innovation uncertainty.
+\item The stated prediction intervals are simultaneously valid over all forecast horizons. \textbf{F}: ordinary forecast intervals are pointwise, with the stated coverage separately at each horizon.
+\item Forecast accuracy should always be judged on the training sample. \textbf{F}: it must be evaluated out-of-sample on observations not used for fitting.
+\end{enumerate}
+
+\subsection*{Exercise 12 -- Cross-Correlation and Transfer Functions}
+For normalized soil moisture (\texttt{soil\_z}) and evapotranspiration (\texttt{et\_z}):
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item A dominant cross-correlation at lag \(-2\) suggests that soil moisture may influence evapotranspiration after two time units. \textbf{T}: under the displayed convention, soil moisture at \(t-2\) has predictive association with evapotranspiration at \(t\).
+\item Significant positive lags in the prewhitened cross-correlogram indicate that changes in soil moisture may depend on earlier changes in evapotranspiration. \textbf{T}: positive-lag direction follows from the order of the two series in the CCF.
+\item Prewhitening is unnecessary because the input already behaves approximately as White Noise. \textbf{T}: its ACF has no systematic significant autocorrelation; the minor lag-7 exceedance is compatible with sampling variation.
+\item A one-way transfer function from soil moisture to evapotranspiration is appropriate from the displayed structure. \textbf{F}: significant associations at both positive and negative lags suggest possible bidirectional dependence, violating the no-feedback assumption.
+\end{enumerate}
+
+\subsection*{Exercise 13 -- Periodogram and Spectrum}
+For \(n=128\) monthly observations and the supplied periodogram:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item The dominant peak indicates a periodic component with a 12-month period. \textbf{T}: \(\nu=1/12\Rightarrow T=12\).
+\item Since \(1/12\) is not a Fourier frequency \(j/128\), spectral leakage occurs. \textbf{T}: its power spreads across neighboring Fourier frequencies.
+\item The raw periodogram is an unbiased and consistent spectrum estimator. \textbf{F}: its ordinates are asymptotically unbiased but inconsistent; their variance does not vanish.
+\item An AR model-based spectrum depends only on innovation variance, not on AR coefficients. \textbf{F}: innovation variance controls vertical scale, while AR coefficients determine spectral shape and peaks.
+\end{enumerate}
+
+\subsection*{Exercise 14 -- Time Series Classification}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item TSC typically takes one value at one time point as input and assigns a categorical label to that point. \textbf{F}: the input is an entire time-series segment and one label is assigned to the segment.
+\item Standard \(k\)NN commonly uses Euclidean distance and does not account for temporal misalignment. \textbf{T}: it compares equally indexed observations point by point.
+\item DTW warps the time axis to align two series and often improves classification over Euclidean \(k\)NN. \textbf{T}: it can match similar shapes occurring with different timing.
+\item Deep neural networks for TSC require manual feature extraction from every segment. \textbf{F}: CNNs and RNNs can learn features directly from raw sequences.
 \end{enumerate}
 
 % ============================================================
