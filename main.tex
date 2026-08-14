@@ -208,6 +208,8 @@ General linear filter:
 \]
 Window width controls smoothing: larger window \(\Rightarrow\) smoother trend; smaller window \(\Rightarrow\) follows data more closely. Symmetric moving averages cannot estimate trend near boundaries.
 
+For a series of length \(T\), a complete-period filter of width \(k\) requires the seasonal period \(k\) to be known and produces \(T-k+1\) trend estimates. Filtering estimates the trend; differencing can remove a trend to obtain stationarity but does \emph{not} recover or estimate the removed trend itself.
+
 \subsection{Seasonal Data}
 
 For seasonal series, trend estimation should average over a complete period so seasonal effects cancel. For even period, e.g. \(p=12\), exact centering requires half-weight at the two extremes.
@@ -225,6 +227,8 @@ LOESS estimates trend through \key{local weighted regressions}. Compared with mo
 \subsection{STL}
 
 STL = \key{Seasonal-Trend decomposition using LOESS}; it decomposes \(X_t=\text{trend}+\text{seasonal}+\text{remainder}\). Both trend and seasonality are obtained by smoothing.
+
+In R, \texttt{decompose()} uses classical moving-average filtering for the trend, whereas \texttt{stl()} uses LOESS. With \texttt{s.window="periodic"}, STL estimates one fixed seasonal pattern across cycles (equivalently, season-specific averages after detrending).
 
 Two main controls: trend window controls smoothness of trend; seasonal window controls how quickly seasonality may evolve. Larger span \(\Rightarrow\) smoother component; smaller span \(\Rightarrow\) more flexible but greater risk of overfitting. If seasonality is assumed constant, use a periodic seasonal pattern.
 
@@ -267,6 +271,8 @@ ACF measures \key{linear serial dependence} at lag \(k\).
 
 A lag-\(k\) scatterplot displays \((X_t,X_{t+k})\). The Pearson correlation gives a natural estimate of lag-\(k\) dependence.
 
+An upward linear cloud indicates positive lag-\(k\) autocorrelation; a downward cloud indicates negative autocorrelation.
+
 Problem: at lag \(k\), only \(n-k\) pairs remain. High-lag correlations therefore become unstable; for last estimable lags there may be only two points and correlation can artificially become \(\pm1\). Hence this is not the preferred estimator.
 
 \subsection{Plug-in ACF}
@@ -293,6 +299,8 @@ The \key{correlogram} plots \(\widehat\rho(k)\) against lag. For a long iid sequ
 \]
 
 An ACF spike outside the bounds is regarded as evidence of non-zero autocorrelation. Caveat: even for iid data, about 5\% of coefficients are expected to exceed them by chance. Bounds are asymptotic and derived for iid processes; for finite serially dependent series they can be optimistic.
+
+A spike inside the bands does \emph{not} prove that the true autocorrelation is zero: it only means that \(H_0:\rho(k)=0\) is not rejected at that lag. Accordingly, even White Noise has random sample autocorrelations that are generally not exactly zero.
 
 \subsection{Ljung--Box Test}
 
@@ -479,6 +487,8 @@ where \(E_t\) is White Noise and an innovation, hence independent of \(X_{t-1},X
 \]
 \(\Phi\) is the \key{characteristic polynomial}. AR models must be fitted to stationary series: trend/seasonality must first be removed.
 
+The exact AR order is the degree of \(\Phi\): the model is genuinely AR(\(p\)) iff \(\alpha_p\neq0\) (intermediate coefficients may be zero).
+
 \subsection{Mean and Shift}
 
 For an unshifted stationary AR($p$),
@@ -624,6 +634,8 @@ or \(X_t=\Theta(B)E_t\), with
 \Theta(B)=1+\beta_1B+\cdots+\beta_qB^q.
 \]
 Interpretation: a random shock can affect the current value and several subsequent periods.
+
+The exact MA order is \(q\) iff \(\beta_q\neq0\); the highest exponent in \(\Theta\) is therefore \(q\).
 
 \subsection{Moments and Dependence}
 
@@ -789,6 +801,8 @@ Identification combines stationarity, ACF/PACF, low-order drops, parsimony, info
 m,\alpha_1,\ldots,\alpha_p,\beta_1,\ldots,\beta_q,\sigma_E^2.
 \]
 CSS estimates can provide starting values. MLE gives asymptotically normal/efficient estimates and standard errors.
+
+R's \texttt{arima()} default is \texttt{method="CSS-ML"}: CSS supplies initial estimates and maximum likelihood produces the final estimates; it does not stop at conditional sum of squares.
 
 \subsection{Parsimony}
 
@@ -1775,6 +1789,13 @@ For every stationary ARMA:
 \boxed{\widehat X_{n+k|n}\to E[X_t]}
 \]
 and forecast convergence is typically exponential. Prediction-interval width converges to a constant determined by unconditional process variance.
+
+If \(X_t=\sum_{j\ge0}\psi_jE_{t-j}\), the known-parameter \(k\)-step forecast-error variance is
+\[
+\boxed{\operatorname{Var}(X_{n+k}-\widehat X_{n+k|n})
+=\sigma_E^2\sum_{j=0}^{k-1}\psi_j^2},
+\]
+so it is non-decreasing in \(k\) and converges to \(\operatorname{Var}(X_t)\). By contrast, merely increasing the fitted AR order \(p\) does \emph{not} by itself determine whether an estimated prediction interval is wider or narrower; the fitted coefficients and innovation variance matter.
 
 The AR part makes forecasts depend strongly on recent observations; the invertible MA part means, theoretically, all past observations can have diminishing influence through estimated innovations.
 
@@ -3122,7 +3143,246 @@ A series of length \(n=60\) is examined using its time plot and raw periodogram.
 \item The periodogram gives unbiased and consistent spectral estimates. \textbf{F}: ordinates are (asymptotically) unbiased but inconsistent; their variance does not vanish with \(n\), so smoothing is needed.
 \end{enumerate}
 
+% ============================================================
+\section{Exam Questions and Solutions -- Summer 2023}
+
+\subsection*{Exercise 1 -- Seasonal Random Walk}
+Let \(X_t=X_{t-2}+E_t\), \(t=3,\ldots,200\), where \(E_t\stackrel{iid}{\sim}N(0,1)\), \(X_1=E_1\), \(X_2=E_2\).
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item This process has a White Noise innovation. \textbf{T}: the additive \(E_t\)'s are iid, mean zero and have constant variance.
+\item This process has a constant mean equal to zero. \textbf{T}: the recursion and initialization give \(E[X_t]=0\) for every \(t\).
+\item Its characteristic polynomial is \(\Phi(B)=1+B^2\). \textbf{F}: \(X_t-X_{t-2}=E_t\), hence \(\Phi(B)=1-B^2\).
+\item The process is stationary. \textbf{F}: the roots are \(\pm1\), on the unit circle; variance accumulates separately along the odd and even subsequences.
+\end{enumerate}
+
+\subsection*{Exercise 2 -- Time-Varying Variance}
+Let \(X_t=0.5tE_t\), where \(E_t\stackrel{iid}{\sim}\operatorname{Unif}(-1,1)\).
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item This process has a White Noise innovation. \textbf{T} in the official terminology: \(E_t\) is White Noise. Strictly, the one-step forecast error \(0.5tE_t\) is heteroskedastic and is not White Noise.
+\item The process has constant mean. \textbf{T}: \(E[X_t]=0.5tE[E_t]=0\).
+\item The process has constant variance. \textbf{F}: \(\operatorname{Var}(X_t)=0.25t^2\operatorname{Var}(E_t)=t^2/12\).
+\item \(Y_t=0.5E_t\) is stationary. \textbf{T}: the \(Y_t\)'s are iid.
+\end{enumerate}
+
+\subsection*{Exercise 3 -- ARMA Definitions}
+For \(X_t=\sum_{j=1}^p\alpha_jX_{t-j}+E_t+\sum_{j=1}^q\beta_jE_{t-j}\):
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item The AR order is \(p\) iff \(\alpha_p\neq0\). \textbf{T}: the order is the degree of the AR polynomial.
+\item Stationarity requires all AR roots to be real-valued. \textbf{F}: roots may be complex; every root must have modulus greater than one.
+\item The process is called ARIMA when its MA part is invertible. \textbf{F}: the I means integrated, i.e. differencing is required.
+\item The AR characteristic polynomial is \(1+\beta_1B+\cdots+\beta_qB^q\). \textbf{F}: that is the MA polynomial; the AR polynomial is \(1-\alpha_1B-\cdots-\alpha_pB^p\).
+\end{enumerate}
+
+\subsection*{Exercise 4 -- Invertibility}
+Consider the same ARMA(\(p,q\)) process.
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item If \(q=1\) and \(\beta_1=0.5\), the process is invertible for every choice of the AR part. \textbf{T}: invertibility depends only on \(1+0.5B\), whose root is \(-2\).
+\item If \(q=0\), the process is stationary for every AR part. \textbf{F}: stationarity still requires all AR roots outside the unit circle.
+\item If all \(X_t\)'s are observed, invertibility means that the innovations \(E_t\) can be recovered from them. \textbf{T}.
+\item Every ARMA process can be written as AR(\(\infty\)). \textbf{F}: the MA polynomial must be invertible.
+\end{enumerate}
+
+\subsection*{Exercise 5 -- Identification from ACF/PACF}
+For the supplied stationary-looking series, the ACF decays and the PACF cuts off after lag 1.
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item It is plausible that the series comes from a stationary ARMA process. \textbf{T}.
+\item It is plausible that it comes from AR(1). \textbf{T}: decaying ACF and PACF cutoff at 1 are the AR(1) signature.
+\item It is plausible that it comes from MA(1). \textbf{F}: MA(1) would have an ACF cutoff after lag 1 and a decaying PACF.
+\item It is plausible that it is \(X_t=E_t+0.5E_{t-1}\). \textbf{F}: the MA(1) family is inconsistent with the displayed correlograms.
+\end{enumerate}
+
+\subsection*{Exercise 6 -- Correlogram Basics}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item A downward linear trend in a lagged scatterplot shows positive autocorrelation. \textbf{F}: it shows negative autocorrelation.
+\item The blue dotted \texttt{acf} bands are 90\% intervals for iid data. \textbf{F}: the default bands are approximately 95\% pointwise intervals.
+\item The autocorrelations estimated by \texttt{acf} are shrunk toward zero at high lags. \textbf{T}: the common denominator \(n\) is used although only \(n-k\) products remain.
+\item For White Noise, the estimated autocorrelations equal zero for every \(k\ge1\). \textbf{F}: the theoretical ACF is zero; sample estimates fluctuate randomly around zero.
+\end{enumerate}
+
+\subsection*{Exercise 7 -- ACF Statements}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item If an estimated ACF coefficient lies inside the bands, the true coefficient is zero. \textbf{F}: one merely fails to reject \(H_0:\rho(k)=0\).
+\item For stationary \(X_t=0.6X_{t-1}+E_t\), \(\rho(2)=0\). \textbf{F}: \(\rho(2)=0.6^2=0.36\).
+\item For \(X_t=0.6E_t+0.6E_{t-1}\), \(\rho(2)=0\). \textbf{T}: an MA(1) ACF cuts off after lag 1.
+\item The plug-in ACF estimator is unbiased. \textbf{F}: it is biased but consistent.
+\end{enumerate}
+
+\subsection*{Exercise 8 -- AR Properties}
+For \(X_t=\alpha_1X_{t-1}+\cdots+\alpha_pX_{t-p}+E_t\), \(\alpha_p\neq0\):
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item The true ACF always has exponential decay. \textbf{F}: this signature requires a stationary AR process.
+\item If \(p=1\) and \(|\alpha_1|<1\), then \(\rho(k)=\alpha_1^k\) for every \(k\ge0\). \textbf{T}.
+\item The characteristic polynomial is \(1-\alpha_1B-\cdots-\alpha_pB^p\). \textbf{T}.
+\item If all its roots have modulus greater than one, the process has a causal MA(\(\infty\)) representation. \textbf{T}.
+\end{enumerate}
+
+\subsection*{Exercise 9 -- Matching Series and Correlograms}
+In the supplied figure the correspondence is: series 1 \(\leftrightarrow\) ACF III/PACF B/MA(3); series 2 \(\leftrightarrow\) ACF II/PACF A/AR(2); series 3 \(\leftrightarrow\) ACF I/PACF C/ARMA(2,1).
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Time series 2 has ACF I. \textbf{F}: series 2 is negatively correlated at lag 1, unlike ACF I.
+\item Time series 3 has ACF I. \textbf{T}: both show persistent positive autocorrelation.
+\item Time series 1 has PACF A. \textbf{F}: it has PACF B.
+\item Time series 2 has PACF A. \textbf{T}: PACF A is the only one with a negative lag-1 value.
+\end{enumerate}
+
+\subsection*{Exercise 10 -- Matching Processes}
+Using the same figure:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item ACF III belongs to the MA process. \textbf{T}: it is the only ACF with a clear finite cutoff.
+\item ACF II and PACF A belong to the same process. \textbf{T}: both have negative lag-1 dependence and identify the AR(2).
+\item ACF I and PACF C belong to the same process. \textbf{T}: they identify the ARMA(2,1).
+\item PACF A was not generated by the MA process. \textbf{T}: its cutoff is characteristic of an AR process.
+\end{enumerate}
+
+\subsection*{Exercise 11 -- Quantitative Identification}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item For the process corresponding to ACF I, \(\rho(3)>0\) is plausible. \textbf{T}: the lag-3 spike is above the acceptance band.
+\item ACF II plausibly comes from MA(2) with coefficients \((-0.6,0.6)\). \textbf{F}: the MA(2) interpretation would require a sharp ACF cutoff, which the displayed pattern does not support as stated.
+\item PACF A plausibly comes from AR(2). \textbf{T}: it has the typical cutoff after lag 2.
+\item Series 2 plausibly comes from AR(2) with \(\alpha_1>0,\alpha_2>0\). \textbf{F}: its oscillating/negative short-lag behavior is incompatible with both coefficients positive.
+\end{enumerate}
+
+\subsection*{Exercise 12 -- Regression with Correlated Errors}
+For the supplied regression residual plot and ACF/PACF:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Significant residual correlation is present at the standard 5\% level. \textbf{T}: several spikes cross the bands.
+\item With correlated errors, linear regression still yields valid coefficient estimates. \textbf{T} under exogeneity: OLS remains unbiased/consistent, although inefficient.
+\item With correlated errors, ordinary linear regression yields valid coefficient confidence intervals. \textbf{F}: standard errors are usually underestimated and intervals too narrow.
+\item With an appropriate GLS correlation structure, the raw GLS residuals must look like White Noise. \textbf{F}: raw residuals should match the specified correlation; the whitened innovations must look like White Noise.
+\end{enumerate}
+
+\subsection*{Exercise 13 -- Forecasting}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Every shifted ARMA(\(p,q\)) point forecast converges exponentially to zero. \textbf{F}: it converges to the non-zero global mean.
+\item For ARIMA(\(p,d,q\)) with \(d\neq0\), prediction-interval width grows with horizon. \textbf{T}: integration accumulates forecast uncertainty.
+\item Fitting an AR model with a higher order always produces a wider prediction interval. \textbf{F}: order alone does not determine the width; fitted dynamics and innovation variance matter.
+\item If an MA part is present in an unshifted ARMA model, every forecast differs from zero. \textbf{F}: forecasts beyond the MA memory may be zero when there is no AR part; in general the claim is not guaranteed.
+\end{enumerate}
+
+\subsection*{Exercise 14 -- Multivariate Series}
+For stationary \(X_1=(X_{1,t})\), \(X_2=(X_{2,t})\):
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item \(\rho_{12}(k)\) measures association between \(X_{1,t}\) and \(X_{2,t+k}\). \textbf{F} under the course convention: it measures \(\operatorname{Corr}(X_{1,t+k},X_{2,t})\).
+\item For every \(k\), \(\rho_{12}(-k)=\rho_{21}(k)\). \textbf{T}.
+\item The raw cross-correlogram from \texttt{acf} provides valid confidence bands. \textbf{F}: within-series autocorrelation invalidates the iid bands; prewhitening is needed.
+\item A transfer-function model applies when \(X_1\) and \(X_2\) mutually influence each other. \textbf{F}: it assumes one-way influence from input to output and no feedback.
+\end{enumerate}
+
+% ============================================================
+\section{Exam Questions and Solutions -- Summer 2022}
+
+\subsection*{Exercise 1 -- Stationarity}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item With iid \(E_t\sim\operatorname{Unif}(-1,1)\), \(X_1=E_1\), \(X_2=E_2\), the recursion \(X_t=0.5X_{t-2}+E_t\) is stationary. \textbf{F under the stated initialization}: \(\operatorname{Var}(X_1)=1/3\), whereas \(\operatorname{Var}(X_3)=5/12\); it only converges to the stationary variance \(4/9\). The official key says \textbf{T}, implicitly replacing the given initialization by the stationary one.
+\item \(X_t=0.5t+E_t\) is stationary. \textbf{F}: its mean has a deterministic linear drift.
+\item Constant mean and variance alone imply stationarity. \textbf{F}: weak stationarity also requires \(\operatorname{Cov}(X_t,X_s)\) to depend only on \(t-s\).
+\item If \(X_t\) is non-stationary, then \(Y_t=X_t-X_{t-1}\) is also non-stationary. \textbf{F}: differencing can remove a trend or unit root.
+\end{enumerate}
+
+\subsection*{Exercise 2 -- AR Models}
+For \(X_t=\alpha_1X_{t-1}+\cdots+\alpha_pX_{t-p}+E_t\):
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item The characteristic polynomial is \(1+\alpha_1B+\cdots+\alpha_qB^q\). \textbf{F}: it is \(1-\alpha_1B-\cdots-\alpha_pB^p\).
+\item If the characteristic polynomial has degree \(k\), the process is of order \(k\). \textbf{T}: the order is the highest non-zero AR lag.
+\item Stationarity requires all characteristic roots to be real. \textbf{F}: complex roots are allowed, but every root must have modulus greater than one.
+\item \(\widehat\rho(1),\ldots,\widehat\rho(p)\) can estimate \(\alpha_1,\ldots,\alpha_p\). \textbf{T}: substitute them into the Yule--Walker equations.
+\end{enumerate}
+
+\subsection*{Exercise 3 -- MA Models}
+For \(Y_t=E_t+\beta_1E_{t-1}+\cdots+\beta_qE_{t-q}\):
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Its characteristic polynomial is \(\Theta(B)=1+\beta_1B+\cdots+\beta_qB^p\). \textbf{T in the official key, treating the final \(B^p\) as a typo for \(B^q\)}; literally as printed it is false unless \(p=q\).
+\item Every finite MA(\(q\)) is stationary. \textbf{T}: its mean and autocovariances are time-invariant for all coefficients.
+\item The process is invertible if the innovations can be recovered from the observations. \textbf{T}.
+\item It is invertible if its characteristic polynomial has a unique root. \textbf{F}: every root must have modulus greater than one; uniqueness is irrelevant.
+\end{enumerate}
+
+\subsection*{Exercise 4 -- Matching Series and Correlograms}
+In the supplied figure the correspondence is: series 1 \(\leftrightarrow\) ACF I/PACF C/AR(2); series 2 \(\leftrightarrow\) ACF II/PACF A/MA(2); series 3 \(\leftrightarrow\) ACF III/PACF B/ARMA(1,3).
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Time series 1 has ACF I. \textbf{T}: its persistent positive short-lag dependence matches ACF I.
+\item Time series 2 has ACF II and PACF C. \textbf{F}: it has PACF A.
+\item Time series 3 has PACF A. \textbf{F}: it has PACF B.
+\item Time series 3 has ACF III. \textbf{T}: both show strong slowly decaying positive correlation.
+\end{enumerate}
+
+\subsection*{Exercise 5 -- Matching Processes}
+Using the same figure:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item ACF III corresponds to the MA process. \textbf{F}: an MA ACF has a sharp cutoff; ACF III belongs to ARMA.
+\item ACF II corresponds to the MA process. \textbf{T}: it is the only ACF with a clear cutoff.
+\item PACF C corresponds to the AR process. \textbf{T}: it cuts off after lag 2.
+\item ACF I and PACF A come from the same series. \textbf{F}: their lag-1 correlations have opposite signs.
+\end{enumerate}
+
+\subsection*{Exercise 6 -- Quantitative Identification}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item It is plausible that series 1 has \(\rho(1)>0.5\). \textbf{T}: its consecutive observations and ACF I show strong positive dependence.
+\item Correlogram II plausibly represents MA(3) with coefficients \((0.9,-0.7,0.4)\). \textbf{F}: the plotted lag-1--3 ACF values are approximately \((-0.7,0.4,-0.1)\), not those implied by the proposed coefficients; the bar at lag 0 is always 1.
+\item Correlogram III plausibly represents MA(1). \textbf{F}: its ACF does not cut off after lag 1.
+\item PACF B could come from an MA process with a negative first coefficient. \textbf{F}: that would produce a negative first partial autocorrelation, unlike PACF B.
+\end{enumerate}
+
+\subsection*{Exercise 7 -- Trend Estimation}
+For a monthly unemployment-rate series with a seasonal component:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Filtering can estimate trend and requires knowledge of the seasonal frequency. \textbf{T}: the window should span a complete seasonal cycle.
+\item Filtering produces a trend estimate of the same length as the original series. \textbf{F}: a width-\(k\) filter gives \(T-k+1\) estimates because boundaries are lost.
+\item Differencing is a method for estimating the trend. \textbf{F}: it can remove trend to obtain stationarity but does not recover the trend curve.
+\item Differencing applies only to series without seasonality. \textbf{F}: seasonal differencing \((1-B^s)X_t\) is designed for seasonal series.
+\end{enumerate}
+
+\subsection*{Exercise 8 -- LOESS and STL}
+For the supplied unemployment-rate trend fit:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item LOESS is a nonparametric smoother based on local weighted regression. \textbf{T}.
+\item From Jan 1992 to Dec 2000, unemployment decreased on average by about 0.5 percentage points per year. \textbf{T}: the plotted trend falls by roughly four points over about eight years.
+\item R's \texttt{decompose()} uses LOESS to estimate trend. \textbf{F}: it uses moving averages.
+\item R's \texttt{stl()} uses LOESS to estimate trend. \textbf{T}: STL means Seasonal-Trend decomposition using LOESS.
+\end{enumerate}
+
+\subsection*{Exercise 9 -- Seasonal Decomposition}
+After removing trend, estimating monthly seasonal effects and plotting the remainder ACF/PACF:
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Alternating positive/negative seasonal effects prove that periodicity was misspecified. \textbf{F}: a seasonal profile can have any shape.
+\item There is enough evidence to reject stationarity of the remainder. \textbf{F}: the remainder is not White Noise, but the plot gives no evidence of non-stationarity.
+\item Modeling the remainder as AR(3) is reasonable. \textbf{F}: PACF has significant spikes at lags 1 and 4; AR(1) or AR(4) are plausible, not AR(3).
+\item \texttt{stl()} can implement the decomposition with LOESS smoothing and fixed seasonal averaging. \textbf{T} when \texttt{s.window="periodic"} is used.
+\end{enumerate}
+
+\subsection*{Exercise 10 -- Likelihood and AIC}
+The fitted models have: AR(1), \(\log L=69.88\), AIC \(-135.76\); AR(4), \(\log L=75.63\), AIC \(-141.26\); ARMA(1,1), \(\log L=71.34\), AIC \(-136.68\).
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item AR(4) provides the best unpenalized fit. \textbf{T}: it has the largest log-likelihood.
+\item AR(1) provides the best AIC-corrected fit. \textbf{F}: lower AIC is better, so AR(4) wins.
+\item After removing trend and seasonality, setting \texttt{include.mean=T} cannot affect AIC. \textbf{F}: the additional estimated mean changes likelihood and parameter penalty.
+\item By default, \texttt{arima()} estimates coefficients only by minimizing CSS. \textbf{F}: the default is CSS-ML, using CSS starts followed by maximum likelihood.
+\end{enumerate}
+
+\subsection*{Exercise 11 -- Time-Series Regression}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item With correlated errors, \texttt{lm()} usually overestimates confidence-interval width. \textbf{F}: it usually underestimates standard errors and produces intervals that are too narrow.
+\item With enough observations, OLS recovers the correct parameters even if residuals are highly correlated. \textbf{T} under regressor exogeneity and regularity: OLS is unbiased/consistent, though inefficient.
+\item GLS benefits over OLS only when the errors are non-stationary. \textbf{F}: GLS improves efficiency and inference whenever a correct non-spherical covariance structure is present, including stationary correlation.
+\item A Durbin--Watson \(p\)-value above 0.5 means the regression errors are uncorrelated at all lags. \textbf{F}: the test addresses lag-1 correlation only.
+\end{enumerate}
+
+\subsection*{Exercise 12 -- Forecasting AR Processes}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Plug-in AR forecasts converge to the series mean at long horizons. \textbf{T} for a stationary AR process.
+\item For every \(k\ge0\), the prediction interval at horizon \(k+1\) is at least as wide as at horizon \(k\). \textbf{T}: forecast-error variance accumulates nonnegative \(\psi_j^2\) terms and approaches the unconditional variance.
+\item The true coverage of a plug-in forecast interval depends on the number of observations used to estimate the model. \textbf{T}: parameter uncertainty, ignored by the plug-in interval, is larger in small samples.
+\item If \(X_t=0.5X_{t-1}+t+E_t\), differencing permits forecasting with an AR(1). \textbf{F}: \(\Delta X_t\) follows an ARMA(1,1)-type model; an ordinary ARIMA without explicit drift also fails to represent the deterministic trend correctly.
+\end{enumerate}
+
+\subsection*{Exercise 13 -- Forecasting MA/ARMA}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item With known parameters, an MA(\(q\)) forecast depends only on the last \(q\) observations. \textbf{F}: the last \(q\) innovations must be reconstructed, and under invertibility they depend on the entire observed past with decaying weights.
+\item An MA(\(q\)) forecast equals the global mean for horizons \(k>q\). \textbf{T}: then every innovation entering the future value is unknown and has conditional mean zero.
+\item The 95\% PI width of a stationary ARMA does not converge because extreme events become more likely at longer horizons. \textbf{F}: it increases toward a finite constant determined by unconditional variance.
+\item AR(\(p\)) forecasts are based only on the last \(p\) observations, regardless of horizon. \textbf{T}: future steps recursively use previous forecasts, which are functions of those last \(p\) values.
+\end{enumerate}
+
 \end{multicols}
 
 \end{document}
-
