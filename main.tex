@@ -3505,6 +3505,154 @@ CI <- mean(x) + c(-1,1)*1.96*sqrt(v)
 \end{verbatim}}
 Positive autocorrelation usually widens the interval; negative short-lag correlation can narrow it. In the yield example, accounting for \(\rho(1),\rho(2)\) gave \(\widehat{\operatorname{Var}}(\bar X)=1.643\) and CI \([48.62,53.64]\), about 10\% narrower than the iid CI \([48.36,53.90]\). Therefore the iid approximation is not automatically conservative or anti-conservative: the signs and magnitudes of the autocorrelations decide.
 
+\subsection*{Series 4 -- AR/ARMA Estimation and Model Choice}
+
+\key{Shifted AR(1).} If the series is stationary around a non-zero mean,
+\[
+X_t-\mu=\alpha(X_{t-1}-\mu)+E_t
+\quad\Longleftrightarrow\quad
+X_t=c+\alpha X_{t-1}+E_t,\qquad c=\mu(1-\alpha).
+\]
+For AR(1), Yule--Walker gives \(\widehat\alpha=\widehat\rho(1)\) and
+\(\widehat\sigma_E^2=\widehat\gamma(0)(1-\widehat\alpha^2)\). Do not confuse the reported \texttt{intercept} in R's stationary AR fit (the process mean \(\mu\)) with the recursion constant \(c\).
+
+\key{Three estimation methods and checks:}
+{\scriptsize
+\begin{verbatim}
+yw   <- ar(x, method="yw",   order.max=1, aic=FALSE)
+burg <- ar(x, method="burg", order.max=1, aic=FALSE)
+ml   <- arima(x, order=c(1,0,0), include.mean=TRUE,
+              method="ML")
+ml$code                 # 0 means numerical convergence
+confint(ml); ml$var.coef
+acf(na.omit(burg$resid)); pacf(na.omit(burg$resid))
+qqnorm(na.omit(burg$resid)); qqline(na.omit(burg$resid))
+\end{verbatim}}
+Yule--Walker, Burg and ML need not agree in finite samples. Compare estimates, but accept a fit only after checking convergence and residual dependence. Approximate Gaussianity is mainly needed for Gaussian likelihood/inference, not for the definition of an AR model.
+
+\key{Theory, simulation and ARMA selection:}
+{\scriptsize
+\begin{verbatim}
+ARMAacf(ar=c(.9,-.5), lag.max=30)
+ARMAacf(ma=c(.8,-.5,-.4), lag.max=30, pacf=TRUE)
+z <- arima.sim(n=200, model=list(ar=c(.9,-.5)))
+fit <- arima(z, order=c(p,0,q), method="ML")
+forecast::tsdisplay(residuals(fit), points=FALSE)
+\end{verbatim}}
+An AR ACF tails off and its PACF cuts off; an MA ACF cuts off and its PACF tails off; both usually tail off for ARMA. A high-order fit is not justified merely because its likelihood is larger: discard unnecessary coefficients, compare AIC and require approximately White-Noise residuals. With many lags, an isolated 5\% spike may occur by chance. In the exercise, this workflow and an exhaustive \texttt{auto.arima(..., stationary=TRUE, seasonal=FALSE, stepwise=FALSE)} both selected ARMA(2,1).
+
+\subsection*{Series 5 -- Regression with AR Errors and ARIMA Workflow}
+
+\key{OLS fit can look similar while its inference is wrong.} For
+\[
+Y_t=\beta_0+\beta^\top X_t+e_t,\qquad
+e_t=\alpha_1e_{t-1}+\alpha_2e_{t-2}+u_t,\quad u_t\sim WN,
+\]
+serial correlation in the OLS residuals invalidates the usual standard errors, tests and variable-selection conclusions. Estimate the error order from residual ACF/PACF/AIC, then use GLS or apply the same filter to \emph{both} sides:
+\[
+Y_t^*=Y_t-\alpha_1Y_{t-1}-\alpha_2Y_{t-2},\qquad
+X_t^*=X_t-\alpha_1X_{t-1}-\alpha_2X_{t-2},
+\]
+with transformed intercept \(\beta_0^*=\beta_0(1-\alpha_1-\alpha_2)\). Transforming only \(Y_t\), or only the residuals, gives the wrong regression.
+
+{\scriptsize
+\begin{verbatim}
+e <- ts(resid(lmfit))
+er <- ar(e, method="burg", order.max=2, aic=FALSE)
+a <- er$ar
+dat.star <- dat - a[1]*lag(dat,-1) - a[2]*lag(dat,-2)
+
+library(nlme)
+g <- gls(Y ~ X1 + X2, data=dat,
+         correlation=corARMA(form=~time,p=2,q=0),
+         method="ML")
+acf(resid(g, type="normalized"))
+\end{verbatim}}
+In \texttt{gls}, \texttt{form=\textasciitilde time} identifies temporal order. Raw residuals retain the modeled AR correlation; \texttt{type="normalized"} returns the whitened residuals that should resemble White Noise. \texttt{step()} does not work for \texttt{gls}; compare nested fixed-effect models manually (usually with ML), then refit the chosen model if needed.
+
+\key{Log--difference--fit--diagnose.} When variability increases with level and the log series still trends:
+{\scriptsize
+\begin{verbatim}
+w <- log(x)
+d <- diff(w)
+m01 <- arima(w, order=c(0,1,1))
+m11 <- arima(w, order=c(1,1,1))
+c(AIC(m01), AIC(m11))
+acf(resid(m11)); pacf(resid(m11))
+qqnorm(resid(m11)); qqline(resid(m11))
+\end{verbatim}}
+The exercise preferred ARIMA(1,1,1) over ARIMA(0,1,1): lower AIC and no remaining residual dependence. Model choice requires all three: plausible transformed series, competitive information criterion and clean innovations.
+
+\subsection*{Series 6 -- Forecasting, Back-Transformation and Overfitting}
+
+\key{Long-horizon behavior.} Forecasts of a stationary shifted AR(\(p\)) converge to \(\mu\) because powers of its stable companion matrix converge to zero. This is a consequence of the root condition, not of every individual AR coefficient necessarily satisfying \(|\alpha_i|<1\). Evaluate on withheld observations:
+{\scriptsize
+\begin{verbatim}
+pr <- predict(fit, n.ahead=h)
+err <- future - pr$pred
+MSE <- mean(err^2)
+\end{verbatim}}
+
+For an integrated process, level-forecast uncertainty generally keeps accumulating, while forecasts of the stationary differenced process approach its mean and its variance approaches a finite limit.
+
+\key{Undo transformations correctly.} If \(W_t=\log X_t\) and the log-scale forecast is approximately \(N(m_h,s_h^2)\),
+\[
+\operatorname{Median}(X_{t+h}\mid\mathcal F_t)=e^{m_h},\qquad
+E[X_{t+h}\mid\mathcal F_t]=e^{m_h+s_h^2/2}.
+\]
+A log-scale 95\% PI becomes \([e^{m_h-1.96s_h},e^{m_h+1.96s_h}]\). If a model was fitted to \(D_t=\Delta\log X_t\), reconstruct levels through
+\[
+\widehat{\log X}_{n+h}=\log X_n+\sum_{j=1}^h\widehat D_{n+j},
+\]
+then exponentiate; fitting ARIMA directly to \(\log X_t\) lets \texttt{predict()} propagate the covariance correctly.
+
+\key{Decomposition forecasts.} If \(X_t=m_t+R_t\), forecast trend and remainder separately and add them. Extrapolating a LOESS trend with a line fitted to its last values can work locally, but a remainder-only prediction interval ignores trend-estimation/extrapolation uncertainty and is not a valid interval for \(X_{t+h}\). Exponential smoothing is an alternative that estimates level/trend dynamically; its residuals must still be checked.
+
+\key{Narrower plug-in intervals can be worse.} In the simulation, fitting AR(1), AR(5) and AR(10) to data generated by AR(1) made the estimated innovation variance and one-step interval width decrease with \(p\), but empirical coverage fell (92\%, 90\%, 86\%) and forecast MSE rose. Extra parameters overfit in-sample noise and their estimation uncertainty is omitted by plug-in intervals. Thus \(\boxed{\text{narrower PI}\not\Rightarrow\text{better forecast}}\).
+
+\subsection*{Series 7 -- Transfer Functions, CCF and Spectra}
+
+\key{Transfer function requires one-way influence.} For input \(X_t\) and output \(Y_t\),
+\[
+Y_t=\sum_{j\ge0}\nu_jX_{t-j}+E_t
+\]
+assumes that input changes can affect present/future output, with no feedback from output to input. Because raw cross-correlations can be caused by autocorrelation within \(X_t\), first prewhiten:
+\[
+D_t=\Phi(B)X_t\sim WN,\qquad Z_t=\Phi(B)Y_t.
+\]
+The \emph{same} fitted input filter \(\Phi(B)\) must be applied to both series. If \(D_t\) is uncorrelated with the output noise, then
+\(\widehat\nu_k=\widehat\gamma_{ZD}(k)/\widehat\sigma_D^2\), \(k\ge0\).
+{\scriptsize
+\begin{verbatim}
+infit <- arima(diff(input), order=c(2,0,0))
+D <- residuals(infit)
+Z <- filter(diff(output), c(1,-infit$model$phi), sides=1)
+zz <- ts.intersect(Z,D)
+acf(zz, type="covariance", na.action=na.pass)
+ccf(D,Z, na.action=na.pass)
+\end{verbatim}}
+Check the lag convention before interpreting direction. Large cross-correlation on the feedback side means the output helps predict the input, violating the one-way transfer-function assumption; in the advertising/sales exercise this revealed mutual influence, so that model was not admissible.
+
+\key{Differencing can create a precise MA/cross-correlation structure.} If \(X_t=t+E_t\), then
+\(\Delta X_t=1+E_t-E_{t-1}\) is MA(1) with coefficient \(-1\):
+\[
+\rho_{\Delta X}(\pm1)=-\tfrac12,\qquad \rho_{\Delta X}(k)=0\ (|k|>1).
+\]
+With \(Z_t=E_t\), under the course convention
+\(\rho_{\Delta X,Z}(0)=1/\sqrt2\), \(\rho_{\Delta X,Z}(1)=-1/\sqrt2\), and it is zero otherwise. This is a useful check of CCF signs and indexing.
+
+\key{Periodogram and AR spectrum.} Convert between peak frequency and period by \(T=1/\nu\); with sampling interval \(\Delta t\), the Nyquist frequency is \(1/(2\Delta t)\). In the exercise, \(\nu\approx0.16\) Hz implied \(T\approx6.2\) s.
+{\scriptsize
+\begin{verbatim}
+spec.pgram(x, taper=.1, log="dB")
+spec.pgram(x, spans=c(13,13), taper=.1, log="dB")
+b <- ar(x, method="burg", order.max=6, aic=FALSE)
+y <- ar(x, method="yw",   order.max=6, aic=FALSE)
+spec.ar(b, log="dB")
+spec.ar(y, log="dB", add=TRUE, lty=2)
+\end{verbatim}}
+Tapering reduces leakage/high-frequency bias; smoothing reduces variance at the price of frequency resolution. For model-based spectra, compare residuals, prediction variance and physically plausible spectral shape: in the example Burg gave a much better high-frequency tail than Yule--Walker.
+
 \end{multicols}
 
 \end{document}
