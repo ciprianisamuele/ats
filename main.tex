@@ -42,7 +42,7 @@
 \footnotesize
 
 \begin{center}
-{\large\bfseries Applied Time Series -- GitHub--Overleaf Sync Test}
+{\large\bfseries Applied Time Series -- Basics \& Descriptive Analysis}
 \end{center}
 \vspace{-2mm}
 
@@ -96,6 +96,8 @@ Useful practical criterion: \textit{Could a segment of the series be moved elsew
 \section{Frequency}
 
 Frequency is the number of observations per natural time unit: \(f=1\) yearly, \(f=4\) quarterly, \(f=12\) monthly; sampling interval \(\Delta t=1/f\).
+
+In R, \texttt{deltat} is the spacing between consecutive observations and \(\texttt{frequency}=1/\texttt{deltat}\). Thus \(\texttt{deltat}=7/365\) means weekly observations and frequency \(365/7\) per year, not yearly data.
 
 A visible stochastic cycle does \key{not} imply that its period should be used as frequency. For high-frequency data, multiple seasonalities may coexist, e.g. daily + weekly + yearly.
 
@@ -225,6 +227,8 @@ LOESS estimates trend through \key{local weighted regressions}. Compared with mo
 STL = \key{Seasonal-Trend decomposition using LOESS}; it decomposes \(X_t=\text{trend}+\text{seasonal}+\text{remainder}\). Both trend and seasonality are obtained by smoothing.
 
 Two main controls: trend window controls smoothness of trend; seasonal window controls how quickly seasonality may evolve. Larger span \(\Rightarrow\) smoother component; smaller span \(\Rightarrow\) more flexible but greater risk of overfitting. If seasonality is assumed constant, use a periodic seasonal pattern.
+
+In \texttt{stl}, \(\texttt{s.window="periodic"}\) forces the same seasonal pattern in every cycle; it does \emph{not} allow seasonality to evolve over time. In \texttt{plot.stl}, panels use different vertical scales. The grey range bars provide a common numerical reference: a \key{shorter} visible grey bar means the component has a \key{larger range/magnitude}, whereas a longer bar means a smaller range. They are scale bars, not confidence intervals. For monthly data, four repeated oscillations within one year imply a period of \(12/4=3\) months, i.e. a quarterly effect.
 
 STL may struggle with abrupt jumps because smoothers assume a continuous, smooth underlying structure.
 
@@ -507,6 +511,13 @@ For AR($p$),
 \]
 Roots must lie outside the unit circle.
 
+This root condition guarantees the existence of a unique causal stationary solution; it does \emph{not} make every finite-start recursion stationary. For AR(1), if \(X_0\) is initialized arbitrarily,
+\[
+\operatorname{Var}(X_t)=\alpha^{2t}\operatorname{Var}(X_0)
++\sigma_E^2\sum_{j=0}^{t-1}\alpha^{2j},
+\]
+which generally changes with \(t\) and only converges to \(\sigma_E^2/(1-\alpha^2)\). Constant variance from the start requires the stationary initialization \(\operatorname{Var}(X_0)=\sigma_E^2/(1-\alpha^2)\). The same distinction applies to AR($p$): stable roots imply asymptotic loss of initialization, not stationarity under arbitrary initial values.
+
 \subsection{ACF/PACF of AR Models}
 
 For AR(1):
@@ -744,7 +755,7 @@ MA polynomial determines invertibility:
 \boxed{\text{invertible}\iff
 \Theta(z)=0\Rightarrow|z|>1.}
 \]
-If both hold, ARMA admits convergent AR($\infty$) and MA($\infty$) representations. Unshifted stationary ARMA has \(E[X_t]=0\); practical models often use \(Y_t=m+X_t\).
+The two infinite representations have different requirements: AR-root stability/causality gives the convergent MA($\infty$) representation, whereas MA-root invertibility gives the convergent AR($\infty$) representation. If both hold, both representations exist. Unshifted stationary ARMA has \(E[X_t]=0\); practical models often use \(Y_t=m+X_t\).
 
 % ============================================================
 \subsection{ACF/PACF Identification}
@@ -1157,8 +1168,10 @@ Predictors may be:
 \item actual explanatory time series;
 \item deterministic functions of time, e.g. trend;
 \item seasonal dummy variables;
-\item possibly lagged predictors.
+\item lagged explanatory variables and/or lagged responses \(Y_{t-j}\), possibly in the same model.
 \end{itemize}
+
+With a lagged response among the regressors, serially correlated errors can create endogeneity: \(Y_{t-1}\) contains \(E_{t-1}\), and if \(E_t\) depends on \(E_{t-1}\), then \(\operatorname{Cov}(Y_{t-1},E_t)\neq0\). In that case even OLS unbiasedness need not survive; the unbiasedness statement below requires exogenous regressors.
 
 Time-series regression is used both for parametric decomposition and for explaining a response using external variables.
 
@@ -2141,6 +2154,8 @@ Likewise,
 \boxed{\rho_{12}(-k)=\rho_{21}(k).}
 \]
 
+At lag zero, \(\rho_{12}(0)=\operatorname{Corr}(X_{1,t},X_{2,t})\); a significant value therefore indicates \key{contemporaneous correlation}.
+
 Interpretation under this convention:
 \[
 \rho_{12}(k)
@@ -2282,6 +2297,7 @@ Transfer functions quantify a \key{directional} relation:
 \[
 X_1\longrightarrow X_2.
 \]
+The standard transfer-function model is linear in present and lagged inputs; it captures delayed \key{linear} dependence, not a general nonlinear relationship.
 Assumptions:
 \begin{itemize}
 \item \(X_1\) (input) may influence \(X_2\) (output);
@@ -2980,5 +2996,133 @@ I_n(\nu_k)=\frac n4(\widehat\alpha_k^2+\widehat\beta_k^2).
 
 \end{multicols}
 
+\begin{multicols}{2}
+\raggedcolumns
+
+% ============================================================
+\section{Exam Questions and Solutions -- Summer 2024}
+
+\subsection*{Exercise 1 -- ACF}
+Consider the analysis of the autocorrelation function (ACF) and related concepts.
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item The blue dashed horizontal lines in an ACF plot represent a 95\% acceptance region for the null hypothesis \(\rho(k)=0\) for all \(k\). \textbf{T} in the official key. More precisely, the bands are pointwise for each lag; the joint null over several lags is tested by Ljung--Box.
+\item For White Noise, we expect 5\% of the estimated ACF coefficients to lie outside the confidence bounds. \textbf{T}: these are expected type-I errors.
+\item A slowly decaying ACF can indicate non-stationarity. \textbf{T}: trend/high persistence commonly produces large correlations over many lags.
+\item The plug-in ACF estimator is unbiased. \textbf{F}: use of the sample mean and the common denominator produces finite-sample bias, although the estimator is consistent.
+\end{enumerate}
+
+\subsection*{Exercise 2 -- Transformations and Decomposition}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Decomposition separates a series into trend, seasonal and residual components. \textbf{T}.
+\item The seasonal component captures long-term trends. \textbf{F}: it captures periodic fluctuations; the trend component captures long-term movement.
+\item Differencing can help achieve stationarity. \textbf{T}: it can remove trend and stabilize the mean.
+\item A log transformation can stabilize variance. \textbf{T}: especially when variability increases proportionally with the series level.
+\end{enumerate}
+
+\subsection*{Exercise 3 -- Sparse AR(2)}
+Let \(Y_t=0.5Y_{t-2}+0.3E_t\), \(t=3,\ldots,200\), where \(E_t\stackrel{iid}{\sim}\operatorname{Unif}(-1,1)\), \(Y_1=E_1\), \(Y_2=E_2\).
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item This is an autoregressive process of order 1. \textbf{F}: the largest response lag is 2, hence it is a sparse AR(2) with \(\alpha_1=0,\alpha_2=0.5\).
+\item Its characteristic polynomial is \(1-0.5B^2\). \textbf{T}.
+\item Its variance increases over time. \textbf{F}: with the stated initialization it changes along the odd/even subsequences and converges to the stationary variance; it does not increase. The official explanation incorrectly calls the finite-start process stationary.
+\item We expect a significant PACF spike at lag 2. \textbf{T}: the stationary AR(2) PACF cuts off after lag 2, with the relevant non-zero coefficient at lag 2.
+\end{enumerate}
+
+\subsection*{Exercise 4 -- AR(1) Initialization}
+Let \(X_t=0.8X_{t-1}+E_t\), \(t=2,\ldots,200\), where \(E_t\stackrel{iid}{\sim}N(0,1)\) and \(X_1=E_1\).
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item The process has a White Noise innovation. \textbf{T}: \(E_t\) is iid, mean zero and has constant variance.
+\item The process is non-stationary. \textbf{T under the stated initialization}: \(\operatorname{Var}(X_t)=(1-0.64^t)/(1-0.64)\) depends on \(t\). The official key says \textbf{F} by using only \(|0.8|<1\), but that condition guarantees existence/convergence to a stationary solution, not stationarity under arbitrary initialization.
+\item The mean of the process is zero. \textbf{T}: recursively \(E[X_t]=0\).
+\item The process has constant variance. \textbf{F under the stated initialization}: its variance converges to \(1/(1-0.8^2)=25/9\) but is not constant. The official key says \textbf{T} because it implicitly assumes stationary initialization.
+\end{enumerate}
+
+\subsection*{Exercise 5 -- ARMA(1,2)}
+Let \(X_t=0.5X_{t-1}+E_t+0.3E_{t-1}+0.2E_{t-2}\), with iid innovations.
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item The AR characteristic polynomial is \(1-0.5B+0.3B^2\). \textbf{F}: it is \(1-0.5B\); the other coefficients belong to the MA polynomial.
+\item An ARMA(1,2) can always be represented as an MA(\(\infty\)). \textbf{F}: a convergent causal MA(\(\infty\)) representation requires stable AR roots; it is not automatic from the labels \((1,2)\).
+\item A low-order ARMA is generally preferred to a high-order pure AR or MA. \textbf{T}: it is more parsimonious and estimates fewer parameters.
+\item The PACF is zero after lag 1. \textbf{F}: for a genuine ARMA, both ACF and PACF generally decay without a finite cutoff.
+\end{enumerate}
+
+\subsection*{Exercise 6 -- Frequency and Identification}
+The series is declared in R by \(\texttt{ts(Y,start=2022,deltat=7/365)}\); the supplied ACF decays and the PACF cuts off around lag 2.
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item This is a correct specification for yearly data. \textbf{F}: \(\texttt{deltat}=7/365\) means weekly data, with about \(365/7\) observations per year.
+\item The series likely arises from MA(1). \textbf{F}: MA(1) would have ACF cutoff after lag 1 and decaying PACF.
+\item The series likely arises from AR(2). \textbf{T}: decaying ACF plus PACF cutoff after lag 2 is the AR(2) signature.
+\item Model adequacy could be checked by a Ljung--Box test on residuals. \textbf{T}: it jointly tests remaining residual autocorrelations.
+\end{enumerate}
+
+\subsection*{Exercise 7 -- AR Parameter Estimation}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Maximum Likelihood for the AR model assumes normally distributed noise. \textbf{T} for the Gaussian likelihood used in the course.
+\item OLS for AR(\(p\)) without intercept evaluates goodness-of-fit only on the first \(p\) observations used as predictors. \textbf{F}: those observations initialize the predictors; RSS is evaluated on the remaining \(n-p\) responses.
+\item Burg minimizes forward and backward prediction errors, whereas OLS minimizes only forward errors. \textbf{T}.
+\item ML, OLS and Burg are robust to outliers. \textbf{F}: standard AR estimators are non-robust and can be strongly distorted by outliers.
+\end{enumerate}
+
+\subsection*{Exercise 8 -- ARIMA, SARIMA and GARCH}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item ARIMA is appropriate for a series with both trend and seasonal pattern. \textbf{F}: ordinary ARIMA handles non-seasonal integration/trend; seasonal structure requires SARIMA or prior seasonal adjustment.
+\item Fitting \(\texttt{ARIMA(1,1,2)}\) with no mean is equivalent to first differencing manually and fitting \(\texttt{ARMA(1,2)}\) with no mean. \textbf{T}: both apply the same ARMA model to \(\Delta X_t\).
+\item Seasonal differencing primarily stabilizes variance. \textbf{F}: it removes seasonal mean structure; log/Box--Cox transformations address level-dependent variance.
+\item GARCH primarily models conditional heteroskedasticity. \textbf{T}: it models time-varying conditional variance/volatility clustering.
+\end{enumerate}
+
+\subsection*{Exercise 9 -- Time-Series Regression}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item A time-series regression can include lagged responses and other independent variables simultaneously. \textbf{T}.
+\item GLS automatically accounts for autocorrelation without a specified error-dependence structure. \textbf{F}: GLS requires \(\Sigma\), or a parametric error model from which \(\Sigma\) is estimated.
+\item Residual autocorrelation indicates that all data patterns were captured. \textbf{F}: it indicates remaining unexplained serial structure/model inadequacy.
+\item The lowest-AIC model is guaranteed to have uncorrelated residuals. \textbf{F}: AIC balances fit and complexity but does not test residual whiteness; residual ACF/PACF/Ljung--Box remain necessary.
+\end{enumerate}
+
+\subsection*{Exercise 10 -- Regression with Serial Errors}
+Monthly sales are regressed on advertising spend, time trend and lagged sales; the supplied residual ACF/PACF contains several significant spikes.
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item The residual time-series plot indicates that the model is appropriate for testing the advertising effect. \textbf{F}: serial residual correlation makes ordinary OLS standard errors, CIs and tests unreliable; with lagged sales it may also create endogeneity.
+\item The PACF indicates that AR(2) cannot appropriately model the residuals. \textbf{T}: significant PACF spikes remain beyond lag 2, up to about lag 4.
+\item An AIC plot can help determine an appropriate residual-process order. \textbf{T}: compare low-order candidates, then validate residuals.
+\item After selecting the residual dependence model, one may transform to independent-error regression or use GLS with the residual correlation. \textbf{T}: whitening and GLS are equivalent formulations when the covariance model is correct.
+\end{enumerate}
+
+\subsection*{Exercise 11 -- STL of Regression Residuals}
+The monthly residuals are decomposed using \(\texttt{stl(resid,s.window="periodic")}\).
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item \(\texttt{stl()}\) decomposes a periodic series into trend, seasonality and remainder using LOESS. \textbf{T}.
+\item \(\texttt{s.window="periodic"}\) assumes that the seasonal pattern evolves over time. \textbf{F}: it assumes the same fixed seasonal pattern in every cycle.
+\item The grey bars imply that seasonal variation exceeds trend variation. \textbf{T}: the seasonal range bar is shorter, so the seasonal component has the larger numerical range.
+\item The residuals suggest a quarterly seasonal effect. \textbf{T}: the estimated pattern repeats about every three months, four times per year.
+\end{enumerate}
+
+\subsection*{Exercise 12 -- Forecasting}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item If the MA(\(q\)) part is invertible, forecasting can be approximated by setting sufficiently remote starting innovations to zero. \textbf{T}: the effect of initialization decays in the convergent inverse representation.
+\item For MA(2), the two-step-ahead forecast is always zero. \textbf{F}: horizon 2 can depend on the latest estimated innovation; forecasts are zero only for horizons \(k>2\) in a mean-zero MA(2).
+\item ARMA(1,1) forecast-error variance increases indefinitely with horizon. \textbf{F}: for a stationary ARMA it converges to the finite unconditional variance.
+\item For ARIMA(1,1,1), forecast \(Y_t=\Delta X_t\) first and cumulatively sum the forecasted differences to obtain forecasts of \(X_t\). \textbf{T}: \(\widehat X_{n+k|n}=x_n+\sum_{j=1}^k\widehat Y_{n+j|n}\).
+\end{enumerate}
+
+\subsection*{Exercise 13 -- Multivariate Time Series}
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item A significant cross-ACF at lag 0 indicates contemporaneous correlation. \textbf{T}: it measures \(\operatorname{Corr}(X_t,Y_t)\).
+\item Cross-ACF symmetry means \(\rho_{XY}(k)=\rho_{YX}(-k)\). \textbf{T}.
+\item Prewhitening helps obtain valid sample cross-correlation confidence bounds. \textbf{T}: it removes within-series autocorrelation that otherwise inflates/mixes cross-correlation variability.
+\item Transfer-function models capture nonlinear dependence between two series. \textbf{F}: the standard model captures directional linear effects of present/lagged inputs.
+\end{enumerate}
+
+\subsection*{Exercise 14 -- Spectral Analysis}
+A series of length \(n=60\) is examined using its time plot and raw periodogram.
+\begin{enumerate}[label=\alph*),leftmargin=4mm]
+\item Leakage occurs when true periodicities do not align with the Fourier frequencies. \textbf{T}: power spreads over neighboring Fourier frequencies.
+\item Periodogram peaks at Fourier indices 2 and 6 imply peaks every 2nd and 6th observation. \textbf{F}: frequencies are \(2/60\) and \(6/60\), hence periods \(60/2=30\) and \(60/6=10\) observations.
+\item Model-based spectral estimation primarily uses the periodogram. \textbf{F}: it fits a parametric model, e.g. AR(\(p\)), and plugs estimated parameters into its theoretical spectrum.
+\item The periodogram gives unbiased and consistent spectral estimates. \textbf{F}: ordinates are (asymptotically) unbiased but inconsistent; their variance does not vanish with \(n\), so smoothing is needed.
+\end{enumerate}
+
+\end{multicols}
+
 \end{document}
-```
+
