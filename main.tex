@@ -3383,6 +3383,128 @@ The fitted models have: AR(1), \(\log L=69.88\), AIC \(-135.76\); AR(4), \(\log 
 \item AR(\(p\)) forecasts are based only on the last \(p\) observations, regardless of horizon. \textbf{T}: future steps recursively use previous forecasts, which are functions of those last \(p\) values.
 \end{enumerate}
 
+% ============================================================
+\section{Exercise Sessions -- Compact Summary}
+
+\subsection*{Series 1 -- Time Index, Frequency and Basic R}
+
+\key{Choose the time unit first.} If the natural unit is one year, then
+\[
+\boxed{\texttt{frequency}=\#\text{ observations/year},\qquad
+\texttt{deltat}=1/\texttt{frequency}.}
+\]
+Typical choices: monthly \((12,1/12)\); yearly \((1,1)\); daily \((365,1/365)\); trading days \((\approx252,1/252)\); nightly data with weekly seasonality \((7,1/7)\). For several years of restaurant reservations, use frequency 7 for a weekly pattern or 365 for annual effects. Guiding question: \emph{after how much time should similar behavior repeat?}
+
+\key{Import, dates, \texttt{ts}, subseries and plots:}
+{\scriptsize
+\begin{verbatim}
+dd <- read.table("rainDay.txt", header=TRUE)
+dd$DATE <- as.Date(dd$DATE, "%d.%m.%Y")
+x <- ts(dd[,2], start=2000, frequency=365)
+str(x)
+par(mfrow=c(1,2))
+plot(x)
+plot(window(x, start=2006, end=2007))
+\end{verbatim}}
+Do not delete the time index blindly: convert the measurement column to \texttt{ts} with the correct sampling frequency. Use \texttt{window()} to inspect a meaningful local interval; a full plot can hide short periods, dry spells, outliers or changing variability.
+
+\subsection*{Series 2 -- Stationarity, Decomposition and Differencing}
+
+\key{Visual classification.}
+\begin{itemize}
+\item trend \(\Rightarrow\) non-stationary mean; increasing seasonal amplitude \(\Rightarrow\) consider multiplicative decomposition/log transform;
+\item fixed annual pattern \(\Rightarrow\) deterministic seasonality and non-stationarity;
+\item long irregular cycle (e.g. about 11 years) is \emph{cyclic behavior}, not necessarily deterministic seasonality;
+\item no visible trend/seasonality and stable variability makes stationarity plausible, never proven.
+\end{itemize}
+
+\key{CO\(_2\): trend + monthly seasonality.} For
+\(X_t=m_t+s_t+R_t\), constant seasonal amplitude supports an additive decomposition:
+{\scriptsize
+\begin{verbatim}
+dc <- decompose(co2, type="additive"); plot(dc)
+library(mgcv)
+tr <- as.numeric(time(co2)); mo <- factor(cycle(co2))
+fit1 <- gam(co2 ~ s(tr) + mo)
+fit2 <- gam(co2 ~ s(tr) +
+            sin(2*pi*tr) + cos(2*pi*tr))
+plot(residuals(fit1), type="l")
+\end{verbatim}}
+The factor-month model estimates an arbitrary 12-month profile; one sine/cosine pair imposes a smooth annual harmonic. Compare residual structure \emph{and} variance: the harmonic fit may leave less systematic structure but larger residual variance. A visually close fitted curve alone is not sufficient.
+
+\key{Housing starts: two differences may be needed.} STL separates smooth trend, fixed monthly seasonality and remainder:
+{\scriptsize
+\begin{verbatim}
+H.stl <- stl(hstart, s.window="periodic")
+Y <- diff(hstart, lag=12)  # seasonal difference
+Z <- diff(Y, lag=1)        # remove remaining trend
+plot(Y); plot(Z)
+\end{verbatim}}
+Algebraically,
+\[
+Y_t=(1-B^{12})X_t,\qquad
+Z_t=(1-B)(1-B^{12})X_t.
+\]
+After seasonal differencing, always replot: trend can remain. After ordinary differencing, check whether the resulting level and variance look stable before modeling its dependence.
+
+\subsection*{Series 3 -- ACF/PACF, AR Fitting and Forecasting}
+
+\key{Interpret dependence rather than matching bars mechanically.}
+\begin{itemize}
+\item positive low-lag ACF: inertia/persistence, so neighboring observations tend to be similar;
+\item negative lag-1 ACF: rapid alternation around the mean; alternating ACF signs indicate oscillation;
+\item repeated ACF sign/peak pattern: stochastic periodic behavior;
+\item at lag 1, \(\boxed{\widehat\pi(1)=\widehat\rho(1)}\), useful for matching ACF and PACF panels;
+\item use \texttt{lag.plot(x,lag=6)} to connect ACF signs with the slopes of lagged scatterplots.
+\end{itemize}
+
+If repeated measurements of a fixed standard should satisfy \(X_t=\mu+E_t\), \(E_t\) iid, significant or slowly decaying ACF rejects the intended measurement model: investigate the machine/sample preparation rather than merely fitting dependence.
+
+\key{Physical period to discrete lag.} If a cycle lasts 2 seconds and observations are spaced by 0.15 seconds, its expected lag is \(2/0.15\approx13.3\) observations. A fluctuating cycle produces broad/oscillating ACF behavior rather than exact deterministic repetition.
+
+\key{Choose AR order by PACF/AIC, confirm by residuals.} Significant PACF values suggested \(p=6,9\) (17 was less parsimonious); AIC minima differed across MLE/Yule--Walker/Burg. Thus AIC is not the final decision: a nearby lower-order model may be preferable if its innovations are White Noise.
+{\scriptsize
+\begin{verbatim}
+p <- 9
+fit <- arima(x, order=c(p,0,0), method="ML")
+r <- residuals(fit)
+par(mfrow=c(2,2))
+plot(r); pacf(r)
+plot(x-r, r)              # Tukey-Anscombe
+qqnorm(r); qqline(r)
+\end{verbatim}}
+Accept the model only if residual level/variance are stable, residual ACF/PACF has no relevant structure, the Tukey--Anscombe plot has no pattern and the QQ plot is compatible with Gaussianity when Gaussian inference is used. In the exercise AR(9) passed; AR(6) retained weak residual correlation.
+
+\key{Forecast and 95\% prediction interval:}
+{\scriptsize
+\begin{verbatim}
+pr <- predict(fit, n.ahead=40)
+lines(pr$pred, lty=2)
+lines(pr$pred + 1.96*pr$se, lty=3)
+lines(pr$pred - 1.96*pr$se, lty=3)
+\end{verbatim}}
+Compare with withheld future observations, not fitted training values. The dotted lines are prediction intervals for future observations, not confidence intervals for the conditional mean.
+
+\subsection*{Series 3 -- Mean Inference under Autocorrelation}
+
+For a stationary series, dependence changes uncertainty of \(\widehat\mu=\bar X\):
+\[
+\boxed{\operatorname{Var}(\widehat\mu)=
+\frac{\gamma(0)}{n^2}
+\left[n+2\sum_{k=1}^{n-1}(n-k)\rho(k)\right].}
+\]
+If the ACF is negligible beyond lag \(m\), truncate the sum there. Remember: \texttt{acf(...)} stores lag 0 in position 1.
+{\scriptsize
+\begin{verbatim}
+n <- length(x); m <- 2
+g0 <- var(x)*(n-1)/n
+rho <- acf(x, plot=FALSE)$acf
+v <- g0/n^2 *
+     (n + 2*sum((n-(1:m))*rho[2:(m+1)]))
+CI <- mean(x) + c(-1,1)*1.96*sqrt(v)
+\end{verbatim}}
+Positive autocorrelation usually widens the interval; negative short-lag correlation can narrow it. In the yield example, accounting for \(\rho(1),\rho(2)\) gave \(\widehat{\operatorname{Var}}(\bar X)=1.643\) and CI \([48.62,53.64]\), about 10\% narrower than the iid CI \([48.36,53.90]\). Therefore the iid approximation is not automatically conservative or anti-conservative: the signs and magnitudes of the autocorrelations decide.
+
 \end{multicols}
 
 \end{document}
