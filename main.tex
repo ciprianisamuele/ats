@@ -1,0 +1,2984 @@
+
+\documentclass[9pt,a4paper]{extarticle}
+
+\usepackage[margin=0.75cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{multicol}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{microtype}
+
+% ---------- Compact layout ----------
+\setlength{\columnsep}{0.45cm}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.2pt}
+\setlength{\abovedisplayskip}{2pt}
+\setlength{\belowdisplayskip}{2pt}
+\setlength{\abovedisplayshortskip}{1pt}
+\setlength{\belowdisplayshortskip}{1pt}
+
+\setlist[itemize]{leftmargin=3mm,nosep,topsep=1pt}
+\setlist[enumerate]{leftmargin=4mm,nosep,topsep=1pt}
+
+\titleformat{\section}
+  {\bfseries\normalsize}
+  {\thesection.}{0.35em}{}
+\titlespacing*{\section}{0pt}{4pt}{1pt}
+
+\titleformat{\subsection}
+  {\bfseries\small}
+  {\thesubsection}{0.35em}{}
+\titlespacing*{\subsection}{0pt}{2pt}{0pt}
+
+\titleformat{\subsubsection}
+  {\bfseries\small}
+  {}{0pt}{}
+\titlespacing*{\subsubsection}{0pt}{1pt}{0pt}
+
+\newcommand{\key}[1]{\textbf{#1}}
+\newcommand{\imp}[1]{\(\boxed{\text{#1}}\)}
+
+\begin{document}
+\footnotesize
+
+\begin{center}
+{\large\bfseries Applied Time Series -- Basics \& Descriptive Analysis}
+\end{center}
+\vspace{-2mm}
+
+\begin{multicols}{2}
+\raggedcolumns
+
+% ============================================================
+\section{Time Series: Basic Ideas}
+
+A \key{time series} is a sequence of observations recorded sequentially in time. Unlike standard iid data, observations are typically \key{serially dependent}: \(X_t\not\!\perp X_{t-k}\).
+
+Main goals: exploratory analysis and visualization; decomposition into deterministic and stochastic components; modeling of serial dependence; forecasting; time-series regression; process control/anomaly detection; classification and clustering.
+
+Three important structures are trend, seasonality andstochastic serial dependence.
+
+\key{Trend:} systematic long-term change in the mean level, \(E[X_t]=m_t\), where \(m_t\) varies with time and is not periodic.
+
+\key{Seasonality:} deterministic repeating pattern with a fixed and known period \(p\), i.e. \(s_{t+p}=s_t\). Important: \(\boxed{\text{cyclic behavior}\neq\text{seasonality}}\). A series can display stochastic oscillations without a deterministic seasonal component.
+
+% ============================================================
+\section{Process and Stationarity}
+
+A \key{time series process} is a collection \(\{X_t:t\in T\}\). The observed data \(x_1,\ldots,x_n\) are only \key{one realization} of \((X_1,\ldots,X_n)\). Thus, stationarity is a property of the \key{underlying process}, not of the observed realization itself.
+
+\subsection{Strict Stationarity}
+
+The process is strictly stationary if, for every \(k\), every \(t_1,\ldots,t_k\) and shift \(h\),
+\[
+(X_{t_1},\ldots,X_{t_k})\overset d=(X_{t_1+h},\ldots,X_{t_k+h}).
+\]
+Hence all finite-dimensional distributions are invariant under time shifts. In particular, \(E[X_t]=\mu\), \(\operatorname{Var}(X_t)=\sigma^2\), and \(\operatorname{Cov}(X_t,X_{t+h})=\gamma(h)\), so covariance depends only on the \key{lag} \(h\).
+
+Stationarity does \key{not} imply independence: \(\gamma(h)\neq0\) is allowed. Also \(E[X_t\mid X_{t-1},X_{t-2},\ldots]\) can depend on the past even if \(E[X_t]=\mu\) is constant.
+
+\subsection{Weak Stationarity}
+
+In the course, ``stationarity'' means weak stationarity:
+\[
+\boxed{E[X_t]=\mu,\qquad \operatorname{Var}(X_t)=\sigma^2,\qquad
+\operatorname{Cov}(X_t,X_{t+h})=\gamma(h).}
+\]
+Thus mean and variance are constant and the dependence structure depends only on lag.
+
+Weak stationarity together with \key{ergodicity} is sufficient for most practical statistical learning and forecasting tasks. Ergodicity informally means that time averages converge to the corresponding expectations.
+
+\key{Assessing stationarity.} Stationarity cannot be proven from a single realization; it is treated as a working hypothesis. Typical violations: trend, changing variance, deterministic seasonality, structural breaks.
+
+Useful practical criterion: \textit{Could a segment of the series be moved elsewhere in time without looking unusual?} If yes, stationarity is plausible.
+
+% ============================================================
+\section{Frequency}
+
+Frequency is the number of observations per natural time unit: \(f=1\) yearly, \(f=4\) quarterly, \(f=12\) monthly; sampling interval \(\Delta t=1/f\).
+
+A visible stochastic cycle does \key{not} imply that its period should be used as frequency. For high-frequency data, multiple seasonalities may coexist, e.g. daily + weekly + yearly.
+
+% ============================================================
+\section{Descriptive Analysis}
+
+Useful workflow:
+\[
+\boxed{\text{visualize}\rightarrow\text{transform}\rightarrow
+\text{remove non-stationarity}\rightarrow\text{study dependence}}.
+\]
+
+Inspect the time-series plot for trend, seasonality, changing variability, outliers, structural breaks and possible serial dependence.
+
+For multiple series with different scales, either use separate panels or standardize/index them before comparison. For seasonal series, using only the first observation as reference can be misleading; using the average over the first full period is often preferable.
+
+% ============================================================
+\section{Transformations}
+
+\key{Linear transformation:} \(Y_t=a+bX_t\). It changes units and scale but preserves the essential dependence structure; autocorrelations and corresponding models remain equivalent up to rescaling.
+
+\key{Calendar adjustment:} monthly totals contain artificial variability because months have different lengths. If \(X_t\) is a monthly total, use \(Y_t=X_t/d_t\), where \(d_t\) is the number of days in month \(t\). This removes calendar-induced variation and makes genuine seasonal structure clearer.
+
+\key{Population/exposure adjustment:} if the exposed population varies over time, absolute counts may be misleading. Use rates such as \(\text{events}/\text{population}\), or preferably \(\text{events}/\text{exposure}\). Goal: remove known confounding variation before modeling.
+
+\subsection{Log Transformation}
+
+Use \(Y_t=\log X_t\) when variability increases with level, data are positive/right-skewed, or changes are naturally interpreted relatively rather than absolutely.
+
+The log often stabilizes variance and transforms multiplicative structures into additive ones:
+\(X_t=m_ts_tR_t \Rightarrow \log X_t=\log m_t+\log s_t+\log R_t\).
+
+\key{Back-transformation.} If \(Y=\log X\sim N(\mu,\sigma^2)\), then \(X\) is lognormal with
+\(\operatorname{Median}(X)=e^\mu\), whereas \(E[X]=e^{\mu+\sigma^2/2}\). Thus direct exponentiation of a log-scale forecast produces the \key{median}, not the mean. To estimate the mean:
+\[
+\boxed{\widehat X_{t+h}=\exp\!\left(\widehat Y_{t+h}+\frac{\widehat\sigma_h^2}{2}\right).}
+\]
+The difference is larger when forecast variance is large.
+
+\subsection{Power and Box--Cox}
+
+A power transformation is \(Y_t=X_t^p\); \(p=1/2\) gives the square-root transformation, often useful for count data.
+
+Box--Cox:
+\[
+g_\lambda(x)=\frac{x^\lambda-1}{\lambda},\quad \lambda\neq0,
+\qquad \lim_{\lambda\to0}g_\lambda(x)=\log x.
+\]
+
+Interpretation: \(\lambda\approx0\Rightarrow\) log transformation; \(\lambda\approx1\Rightarrow\) transformation often unnecessary. The script recommends preferring the interpretable log when estimated \(\lambda\) is relatively close to zero.
+
+% ============================================================
+\section{Differencing}
+
+Differencing aims to make a non-stationary series stationary by removing trend and/or seasonality.
+
+\key{First difference:} \(\boxed{Y_t=X_t-X_{t-1}}\). Instead of studying level, we study changes. If \(X_t=m_t+U_t\), \(m_t=\alpha+\beta t\), \(U_t\) stationary, then
+\(Y_t=\beta+U_t-U_{t-1}\), hence \(E[Y_t]=\beta\). Thus differencing a linear trend produces a stationary series with potentially \key{non-zero mean}.
+
+\key{Differencing changes dependence.} Even if \(U_t\) is iid, \(Y_t=U_t-U_{t-1}\) is not iid because consecutive differences share observations; indeed
+\(\operatorname{Cov}(Y_t,Y_{t-1})=-\operatorname{Var}(U_{t-1})\neq0\). Hence \(\boxed{\text{differencing can create artificial serial dependence}}\).
+
+\subsection{Backshift and Higher-Order Differencing}
+
+Define \(BX_t=X_{t-1}\), hence \((1-B)X_t=X_t-X_{t-1}\). Higher-order differencing is \((1-B)^dX_t\). First difference removes linear trend; second difference can remove quadratic trend; in general polynomial trend of degree \(d\) can be removed by differencing order \(d\). Higher-order differencing alters dependence even more.
+
+\subsection{Seasonal Differencing}
+
+For seasonality of period \(p\):
+\[
+\boxed{Y_t=X_t-X_{t-p}=(1-B^p)X_t.}
+\]
+This compares each observation with the corresponding observation one full season earlier. It removes deterministic seasonality and also an exactly linear trend, although for non-linear trends some trend may remain.
+
+If trend and seasonality are both present:
+\[
+\boxed{(1-B)(1-B^p)X_t.}
+\]
+The resulting models lead naturally to SARIMA. Differencing also reduces the number of available observations.
+
+\subsection{Log Returns}
+
+If the series is first logged and then differenced:
+\[
+Y_t=\log X_t-\log X_{t-1}
+=\log\!\left(\frac{X_t}{X_{t-1}}\right)
+\approx\frac{X_t-X_{t-1}}{X_{t-1}},
+\]
+because \(\log(1+x)\approx x\) for small \(x\). Hence log-returns approximate relative/percentage changes. If both operations are needed: \(\boxed{\text{log first, then difference}}\).
+
+% ============================================================
+\section{Decomposition}
+
+Standard additive decomposition:
+\[
+\boxed{X_t=m_t+s_t+R_t},
+\]
+where \(m_t\) is deterministic trend, \(s_t\) deterministic seasonal component, and \(R_t\) stationary remainder, typically mean zero. Goal: obtain a remainder plausibly stationary.
+
+If variability grows with level, additive decomposition on the original scale may be inappropriate; first use a variance-stabilizing transformation, often log.
+
+\subsection{Trend by Linear Filtering}
+
+General linear filter:
+\(\widehat m_t=\sum_{i=-p}^{q}a_iX_{t+i}\). Common symmetric moving average:
+\[
+\widehat m_t=\frac{1}{2p+1}\sum_{i=-p}^{p}X_{t+i}.
+\]
+Window width controls smoothing: larger window \(\Rightarrow\) smoother trend; smaller window \(\Rightarrow\) follows data more closely. Symmetric moving averages cannot estimate trend near boundaries.
+
+\subsection{Seasonal Data}
+
+For seasonal series, trend estimation should average over a complete period so seasonal effects cancel. For even period, e.g. \(p=12\), exact centering requires half-weight at the two extremes.
+
+After trend estimation, \(X_t-\widehat m_t\) is trend-adjusted. Seasonal effect for season \(j\) is estimated by averaging all trend-adjusted observations belonging to that season:
+\[
+\widehat s_j=\operatorname{average}(X_t-\widehat m_t:\ t\text{ belongs to season }j).
+\]
+Finally \(\boxed{\widehat R_t=X_t-\widehat m_t-\widehat s_t}\). Limitation: classical seasonal averaging assumes constant seasonal pattern over time.
+
+\subsection{LOESS}
+
+LOESS estimates trend through \key{local weighted regressions}. Compared with moving averages it gives a smoother trend, estimates near boundaries and local weighting reduces the influence of disturbing observations/outliers. The script recommends LOESS over simple moving averages for trend estimation.
+
+\subsection{STL}
+
+STL = \key{Seasonal-Trend decomposition using LOESS}; it decomposes \(X_t=\text{trend}+\text{seasonal}+\text{remainder}\). Both trend and seasonality are obtained by smoothing.
+
+Two main controls: trend window controls smoothness of trend; seasonal window controls how quickly seasonality may evolve. Larger span \(\Rightarrow\) smoother component; smaller span \(\Rightarrow\) more flexible but greater risk of overfitting. If seasonality is assumed constant, use a periodic seasonal pattern.
+
+STL may struggle with abrupt jumps because smoothers assume a continuous, smooth underlying structure.
+
+\key{Evolving seasonality:} instead of fixed \(s_j\), STL allows \(s_{j,t}\) to evolve smoothly. Too small a smoothing span may cause excessive fluctuation: small span \(\Rightarrow\) possible overfitting.
+
+\key{Multiple seasonalities:} high-frequency series may have
+\(X_t=m_t+s_t^{(1)}+s_t^{(2)}+\cdots+R_t\), e.g. half-hourly electricity demand with daily and weekly seasonality. A seasonal period can only be identified reliably if enough complete cycles are observed.
+
+\subsection{Parametric Decomposition}
+
+Instead of smoothing, trend and seasonality can be modeled parametrically, e.g.
+\[
+X_t=\beta_0+\beta_1t+\beta_2\sin(2\pi t)+\beta_3\cos(2\pi t)+R_t.
+\]
+Here \(\beta_0+\beta_1t\) is linear trend; sine/cosine give cyclic seasonality; \(R_t\) is stationary remainder.
+
+Advantages: parsimonious, few degrees of freedom, formal inference on trend/seasonality. However, if \(R_t\) is serially correlated, standard regression inference is not valid: coefficient estimates can remain unbiased, but standard errors and derived \(p\)-values may be wrong.
+
+More flexible model:
+\[
+X_t=f(t)+\alpha_{\text{season}(t)}+R_t,
+\]
+with smooth trend \(f(t)\) and seasonal dummy effects. Very high-order polynomial trends should be avoided because of poor boundary behavior.
+
+% ============================================================
+\section{Autocorrelation}
+
+For a stationary process:
+\[
+\boxed{\rho(k)=\operatorname{Corr}(X_t,X_{t+k})=\frac{\gamma(k)}{\gamma(0)}},
+\qquad \rho(0)=1.
+\]
+ACF measures \key{linear serial dependence} at lag \(k\).
+
+\subsection{Lagged Scatterplots}
+
+A lag-\(k\) scatterplot displays \((X_t,X_{t+k})\). The Pearson correlation gives a natural estimate of lag-\(k\) dependence.
+
+Problem: at lag \(k\), only \(n-k\) pairs remain. High-lag correlations therefore become unstable; for last estimable lags there may be only two points and correlation can artificially become \(\pm1\). Hence this is not the preferred estimator.
+
+\subsection{Plug-in ACF}
+
+Estimate
+\[
+\widehat\gamma(k)=\frac1n\sum_{t=1}^{n-k}(X_t-\overline X)(X_{t+k}-\overline X),
+\qquad
+\boxed{\widehat\rho(k)=\frac{\widehat\gamma(k)}{\widehat\gamma(0)}}.
+\]
+
+Important: denominator \(n\) is used for every lag even though only \(n-k\) terms appear. Consequences: high-lag estimates are shrunk toward zero; estimator is biased; variance is much lower than lagged-scatterplot estimation; overall MSE is lower; estimator is consistent, so bias disappears asymptotically.
+
+Hence only relatively low lags should normally be interpreted. Rules of thumb for maximum lag: \(10\log_{10}(n)\) or \(n/4\).
+
+% ============================================================
+\section{Correlogram and Confidence Bands}
+
+The \key{correlogram} plots \(\widehat\rho(k)\) against lag. For a long iid sequence, under \(H_0:\rho(k)=0\),
+\[
+\widehat\rho(k)\approx N\!\left(0,\frac1n\right),
+\qquad
+\boxed{\text{95\% bounds}\approx\pm\frac{1.96}{\sqrt n}}.
+\]
+
+An ACF spike outside the bounds is regarded as evidence of non-zero autocorrelation. Caveat: even for iid data, about 5\% of coefficients are expected to exceed them by chance. Bounds are asymptotic and derived for iid processes; for finite serially dependent series they can be optimistic.
+
+\subsection{Ljung--Box Test}
+
+Jointly tests
+\(H_0:\rho(1)=\cdots=\rho(h)=0\). Statistic:
+\[
+\boxed{
+Q(h)=n(n+2)\sum_{k=1}^{h}\frac{\widehat\rho(k)^2}{n-k}
+}
+\]
+and under \(H_0\), \(Q(h)\overset a\sim\chi_h^2\). Small \(p\)-value \(\Rightarrow\) evidence of serial dependence among the first \(h\) lags. Unlike individual ACF bounds, this is a \key{joint test}.
+
+% ============================================================
+\section{ACF and Non-Stationarity}
+
+Strictly, ACF estimation assumes stationarity; nevertheless empirical ACF can diagnose non-stationarity.
+
+\key{Trend:} \(\widehat\rho(k)\) is usually large and positive for many lags and decays very slowly. Thus
+\[
+\boxed{\text{slow ACF decay}\Rightarrow\text{possible trend/non-stationarity}}.
+\]
+
+\key{Seasonality:} ACF shows a persistent periodic pattern with slowly decaying envelope:
+\[
+\boxed{\text{persistent periodic ACF}\Rightarrow\text{possible unremoved seasonality}}.
+\]
+Trend and seasonality should therefore be removed before interpreting the stochastic remainder ACF.
+
+% ============================================================
+\section{Outliers and Missing Values}
+
+Usual correlation and ACF estimators are \key{not robust}. A single outlier enters several lagged pairs and can strongly distort the correlogram.
+
+Missing observations cannot simply be deleted because this changes the temporal structure. Possible approaches: global-mean imputation; local-mean imputation; model-based imputation/forecasting. Alternatively, autocovariances can be estimated using available pairs only, though the resulting autocorrelation sequence may lose desirable mathematical properties.
+
+% ============================================================
+\section{Limitations of Sample ACF}
+
+\key{High-lag bias/variability.} ACF estimates become increasingly unreliable at high lags. Short series yield substantial bias and high sampling variability; consistency becomes useful only when the observed series is sufficiently long.
+
+\key{Compensation effect.} For plug-in ACF estimates from a realization:
+\[
+\boxed{\sum_{k=1}^{n-1}\widehat\rho(k)=-\frac12.}
+\]
+This creates strong finite-sample artifacts. Even if the theoretical ACF is positive for every lag, estimated high-lag autocorrelations may become negative to satisfy this identity. Thus significant-looking high-lag spikes may be pure artifacts. The correlogram is useful but must be interpreted cautiously.
+
+% ============================================================
+\section{CI for the Time-Series Mean}
+
+Estimate
+\[
+\widehat\mu=\overline X=\frac1n\sum_{t=1}^{n}X_t.
+\]
+
+For iid observations, \(\operatorname{Var}(\overline X)=\sigma^2/n\). For a stationary autocorrelated series:
+\[
+\boxed{
+\operatorname{Var}(\overline X)=
+\frac{\gamma(0)}{n}
+\left[
+1+2\sum_{k=1}^{n-1}
+\left(1-\frac{k}{n}\right)\rho(k)
+\right]
+}
+\]
+or equivalently
+\[
+\operatorname{Var}(\overline X)=
+\frac{\gamma(0)}{n^2}
+\left[n+2\sum_{k=1}^{n-1}(n-k)\rho(k)\right].
+\]
+
+Positive autocorrelations generally imply \(\operatorname{Var}(\overline X)>\sigma^2/n\). Hence falsely assuming iid observations gives confidence intervals that are too narrow and may create spurious significance.
+
+Since high-lag ACF estimates are unreliable, in practice only a limited number of low-lag correlations are plugged into the variance estimator and the remaining correlations are approximated as zero.
+
+Approximate CI:
+\[
+\boxed{
+\widehat\mu\pm1.96\sqrt{\widehat{\operatorname{Var}}(\widehat\mu)}
+}.
+\]
+
+% ============================================================
+\section{Partial Autocorrelation}
+
+Ordinary autocorrelation \(\rho(k)=\operatorname{Corr}(X_t,X_{t+k})\) contains both direct and indirect dependence. Example: \(X_t\leftrightarrow X_{t+1}\leftrightarrow X_{t+2}\) can induce correlation between \(X_t\) and \(X_{t+2}\) even without direct lag-2 dependence.
+
+The \key{partial autocorrelation} \(\pi(k)\) measures association between \(X_t\) and \(X_{t+k}\) after removing linear dependence explained by \(X_{t+1},\ldots,X_{t+k-1}\).
+
+\[
+\pi(k)
+=
+\operatorname{Cor}
+\left(
+X_{t+k},X_t
+\,\middle|\,
+X_{t+1}=x_{t+1},\ldots,X_{t+k-1}=x_{t+k-1}
+\right)
+\]
+For example,
+\[
+\pi(1)=\rho(1),\qquad
+\pi(2)=\frac{\rho(2)-\rho(1)^2}{1-\rho(1)^2}.
+\]
+
+\subsection{PACF and AR($p$)}
+
+For
+\[
+X_t=\alpha_1X_{t-1}+\cdots+\alpha_pX_{t-p}+E_t,
+\]
+with iid innovations \(E_t\),
+\[
+\boxed{\pi(k)=0\quad\forall k>p},\qquad
+\boxed{\pi(p)=\alpha_p}.
+\]
+
+Therefore
+\[
+\boxed{\text{PACF cutoff after lag }p\Rightarrow\text{candidate AR}(p)}.
+\]
+As with ACF, estimates from short series can show bias and high variability.
+
+% ============================================================
+\section{Exam Checklist}
+
+\begin{enumerate}
+\item Process \(\neq\) observed realization; stationarity belongs to process.
+\item Weak stationarity: \(E[X_t]=\mu\), \(\operatorname{Var}(X_t)=\sigma^2\), \(\operatorname{Cov}(X_t,X_{t+k})=\gamma(k)\).
+\item Trend and deterministic seasonality imply non-stationarity; cyclic behavior need not be seasonal.
+\item Increasing variability with level \(\Rightarrow\) consider log/Box--Cox.
+\item Multiplicative structure becomes additive after log.
+\item Direct exponentiation of log forecast gives median, not mean.
+\item First differencing: \((1-B)X_t\); seasonal differencing: \((1-B^p)X_t\).
+\item Differencing changes dependence; if both needed, log first then difference.
+\item Decomposition: \(X_t=m_t+s_t+R_t\).
+\item Moving averages estimate smooth trend but fail at boundaries; LOESS uses local weighted regressions; STL allows evolving trend/seasonality.
+\item ACF: \(\rho(k)=\gamma(k)/\gamma(0)\); high-lag estimates unreliable.
+\item Approximate iid ACF bounds: \(\pm1.96/\sqrt n\).
+\item Ljung--Box jointly tests several autocorrelations.
+\item Slowly decaying ACF \(\Rightarrow\) suspect trend; persistent periodic ACF \(\Rightarrow\) suspect seasonality.
+\item Outliers can strongly distort ACF.
+\item Positive autocorrelation increases variance of sample mean.
+\item PACF measures direct dependence controlling intermediate lags.
+\item AR($p$): \(\pi(k)=0\) for all \(k>p\).
+\end{enumerate}
+
+\end{multicols}
+
+
+
+\begin{multicols}{2}
+\raggedcolumns
+
+% ============================================================
+\section{Stationary Time Series Models}
+
+We now model stationary time series parametrically, mainly through \key{ARMA processes}. General form: \(X_t=\mu_t+E_t\), where \(\mu_t=E[X_t\mid X_{t-1},X_{t-2},\ldots]\) is the \key{conditional mean} and \(E_t\) is a White Noise innovation. Stationarity requires the marginal mean \(E[X_t]=\mu\) to be constant, but \(\mu_t\) may vary over time: ARMA models exploit this short-term memory. In general,
+\[
+\mu_t=f(X_{t-1},\ldots,X_{t-p},E_{t-1},\ldots,E_{t-q}),
+\]
+with \(f\) typically linear.
+
+\subsection{White Noise}
+
+\(\{W_t\}\) is \key{White Noise} if \(W_t\) are iid with \(E[W_t]=0\), \(\operatorname{Var}(W_t)=\sigma_W^2\). Hence
+\[
+\boxed{\rho(k)=\pi(k)=0,\quad k\ge1.}
+\]
+If \(W_t\sim N(0,\sigma_W^2)\), it is \key{Gaussian White Noise}. A correctly fitted time-series model should leave residuals resembling White Noise: zero mean, constant variance, no serial dependence.
+
+% ============================================================
+\section{Autoregressive Models AR($p$)}
+
+An \key{AR($p$)} process depends linearly on its previous \(p\) observations:
+\[
+\boxed{X_t=\alpha_1X_{t-1}+\cdots+\alpha_pX_{t-p}+E_t},
+\]
+where \(E_t\) is White Noise and an innovation, hence independent of \(X_{t-1},X_{t-2},\ldots\). Backshift notation:
+\[
+\Phi(B)X_t=E_t,\qquad
+\Phi(B)=1-\alpha_1B-\cdots-\alpha_pB^p.
+\]
+\(\Phi\) is the \key{characteristic polynomial}. AR models must be fitted to stationary series: trend/seasonality must first be removed.
+
+\subsection{Mean and Shift}
+
+For an unshifted stationary AR($p$),
+\[
+\mu=(\alpha_1+\cdots+\alpha_p)\mu\Rightarrow \boxed{\mu=0},
+\]
+whereas the conditional mean is generally non-zero:
+\[
+\mu_t=\alpha_1x_{t-1}+\cdots+\alpha_px_{t-p}.
+\]
+For a non-zero global mean use \(Y_t=m+X_t\), equivalently
+\[
+\boxed{Y_t-m=\sum_{j=1}^p\alpha_j(Y_{t-j}-m)+E_t},
+\]
+so \(E[Y_t]=m\), with unchanged dependence structure.
+
+\subsection{Stationarity}
+
+For AR(1), \(X_t=\alpha X_{t-1}+E_t\). Under stationarity,
+\[
+\sigma_X^2=\alpha^2\sigma_X^2+\sigma_E^2
+\Rightarrow
+\boxed{\sigma_X^2=\frac{\sigma_E^2}{1-\alpha^2}},
+\]
+thus necessarily \(\boxed{|\alpha|<1}\): memory must fade rather than amplify.
+
+For AR($p$),
+\[
+\boxed{\text{stationary}\iff \text{all roots of }\Phi(z)=0\text{ satisfy }|z|>1.}
+\]
+Roots must lie outside the unit circle.
+
+\subsection{ACF/PACF of AR Models}
+
+For AR(1):
+\[
+\boxed{\rho(k)=\alpha^k}.
+\]
+If \(0<\alpha<1\), ACF is positive and exponentially decaying; if \(-1<\alpha<0\), signs alternate with exponentially decaying envelope.
+
+For AR($p$), the autocorrelations satisfy
+\[
+\boxed{\rho(k)=\alpha_1\rho(k-1)+\cdots+\alpha_p\rho(k-p)},
+\]
+with \(\rho(0)=1,\ \rho(-k)=\rho(k)\). For \(k=1,\ldots,p\), these are the \key{Yule--Walker equations}; afterward the ACF is propagated recursively.
+
+Thus for AR($p$):
+\[
+\boxed{\text{ACF: infinite/exponential decay},\qquad
+\text{PACF: cutoff after }p.}
+\]
+Although \(X_t\) directly depends only on \(p\) past values, ordinary autocorrelation generally propagates to all lags. PACF satisfies
+\[
+\boxed{\pi(k)=0\ \forall k>p},\qquad \boxed{\pi(p)=\alpha_p}.
+\]
+
+% ============================================================
+\subsection{Fitting AR($p$)}
+
+Three steps:
+\[
+\boxed{\text{identification}\rightarrow\text{estimation}\rightarrow\text{residual analysis}.}
+\]
+
+\key{Identification:} require stationary series, ACF with approximately exponentially decaying envelope, PACF with recognizable low-lag cutoff. Order \(p\) is suggested by PACF; by \key{parsimony}, try the smallest plausible \(p\).
+
+Main estimation methods: \key{OLS, Burg, Yule--Walker, MLE}. Under mild assumptions they are asymptotically equivalent and usually differ only slightly in practice.
+
+\subsubsection*{OLS}
+
+Estimate \(m\) by \(\widehat m=\bar Y\), center \(X_t=Y_t-\widehat m\), then regress
+\[
+X_t=\sum_{j=1}^p\alpha_jX_{t-j}+E_t
+\]
+without intercept, minimizing
+\[
+\boxed{RSS=\sum_{t=p+1}^n\left(X_t-\sum_{j=1}^p\alpha_jX_{t-j}\right)^2.}
+\]
+OLS is conditional on the first \(p\) observations: they are predictors only, so fit is evaluated on \(n-p\) observations. This creates a forward asymmetry. Innovation variance may be estimated using an approximately unbiased denominator \(n-p-1\) or likelihood convention \(RSS/n\); differences are usually small for long series.
+
+\subsubsection*{Burg}
+
+Burg exploits that an AR process remains AR under time reversal and minimizes both forward and backward one-step prediction errors:
+\[
+\sum_t\left(X_t-\sum_{k=1}^p\alpha_kX_{t-k}\right)^2+
+\sum_t\left(X_{t-p}-\sum_{k=1}^p\alpha_kX_{t-p+k}\right)^2.
+\]
+No simple closed form; solved recursively via the \key{Durbin--Levinson algorithm}. Mean is again estimated by the arithmetic mean. Burg and OLS are asymptotically equivalent, but Burg is generally preferable for finite samples.
+
+\subsubsection*{Yule--Walker}
+
+Replace theoretical autocorrelations in
+\[
+\rho(k)=\sum_{j=1}^p\alpha_j\rho(k-j),\qquad k=1,\ldots,p,
+\]
+with sample ACF:
+\[
+\boxed{\widehat\rho(k)=\sum_{j=1}^p\alpha_j\widehat\rho(k-j)}
+\]
+and solve the resulting linear system for \(\widehat\alpha_j\). Mean is estimated first by the arithmetic mean. YW is asymptotically equivalent to OLS/Burg but often somewhat worse for finite samples; Burg is generally preferred.
+
+\subsubsection*{MLE}
+
+Assume \(E_t\overset{iid}{\sim}N(0,\sigma_E^2)\). Then \((X_1,\ldots,X_n)\) is multivariate Gaussian. MLE jointly estimates \(m,\alpha_1,\ldots,\alpha_p,\sigma_E^2\) by maximizing likelihood. Gaussian likelihood is closely related to minimizing squared prediction errors but accounts for the joint covariance structure.
+
+Under mild assumptions:
+\[
+\boxed{\text{MLE asymptotically normal and efficient}.}
+\]
+It also yields standard errors. Moderate non-Gaussianity usually still gives reasonable point estimates; strong skewness/outliers are more problematic, especially for standard errors, CIs and significance tests. All four AR estimation methods are non-robust to outliers.
+
+\subsection{Order Choice and Residuals}
+
+ACF/PACF and parsimony are primary; AIC is useful as a second opinion. Larger order improves in-sample fit automatically but may hurt precision/out-of-sample behavior:
+\[
+\boxed{\text{prefer smallest model with adequate residuals}.}
+\]
+
+Residuals estimate innovations, \(\widehat E_t=X_t-\widehat X_t\). Good residuals should satisfy
+\[
+\boxed{E[\widehat E_t]\approx0,\quad
+\operatorname{Var}(\widehat E_t)\approx\text{const},\quad
+\rho_{\widehat E}(k)\approx0.}
+\]
+Inspect time-series plot, ACF/PACF, Ljung--Box and QQ/distribution if Gaussianity is assumed. Remaining autocorrelation \(\Rightarrow\) underfitting. Fitted-value comparison alone is weaker because it is in-sample. Simulation from competing fitted models can also assess whether generated behavior resembles observed data.
+
+% ============================================================
+\section{Moving Average Models MA($q$)}
+
+An \key{MA($q$)} is a linear combination of present and previous \(q\) innovations:
+\[
+\boxed{X_t=E_t+\beta_1E_{t-1}+\cdots+\beta_qE_{t-q}}
+\]
+or \(X_t=\Theta(B)E_t\), with
+\[
+\Theta(B)=1+\beta_1B+\cdots+\beta_qB^q.
+\]
+Interpretation: a random shock can affect the current value and several subsequent periods.
+
+\subsection{Moments and Dependence}
+
+Let \(\beta_0=1\). Then
+\[
+E[X_t]=0,\qquad
+\boxed{\operatorname{Var}(X_t)=\sigma_E^2\sum_{j=0}^q\beta_j^2}.
+\]
+A shifted process \(Y_t=m+X_t\) handles non-zero mean.
+
+Autocorrelation:
+\[
+\boxed{\rho(k)=
+\frac{\sum_{j=0}^{q-k}\beta_j\beta_{j+k}}
+{\sum_{j=0}^q\beta_j^2},\quad 1\le k\le q},
+\qquad
+\boxed{\rho(k)=0,\quad k>q.}
+\]
+Thus every finite MA($q$) is stationary for \emph{any} coefficients \(\beta_j\).
+
+For MA(1), \(X_t=E_t+\beta E_{t-1}\):
+\[
+\gamma(0)=\sigma_E^2(1+\beta^2),\qquad
+\gamma(1)=\beta\sigma_E^2,
+\]
+hence
+\[
+\boxed{\rho(1)=\frac{\beta}{1+\beta^2}},\qquad \rho(k)=0,\ k>1.
+\]
+Therefore \(\boxed{|\rho(1)|\le1/2}\); observing a clearly larger first autocorrelation is evidence against MA(1).
+
+Characteristic signature:
+\[
+\boxed{\text{MA($q$): ACF cutoff after }q,\quad PACF\text{ exponentially decays}.}
+\]
+This is complementary to AR($p$).
+
+% ============================================================
+\subsection{Invertibility}
+
+For MA(1),
+\[
+\rho(1)=\frac{\beta}{1+\beta^2}
+=\frac{1/\beta}{1+(1/\beta)^2},
+\]
+so \(\beta\) and \(1/\beta\) generate the same ACF: without a restriction, the MA representation is not unique.
+
+Repeated substitution rewrites MA(1) as AR($\infty$); convergence requires
+\[
+\boxed{|\beta|<1}.
+\]
+General MA($q$):
+\[
+\boxed{\text{invertible}\iff
+\text{all roots of }\Theta(z)=0\text{ satisfy }|z|>1.}
+\]
+Invertibility gives a convergent AR($\infty$) representation, guarantees uniqueness for a given ACF and is essential for estimation.
+
+Important distinction:
+\[
+\boxed{\text{MA stationarity automatic; invertibility not automatic}.}
+\]
+
+% ============================================================
+\subsection{Fitting MA($q$)}
+
+MA estimation is harder than AR because past innovations are unobserved; efficient closed-form estimators are unavailable.
+
+A plug-in approach could solve theoretical ACF equations using \(\widehat\rho(k)\); e.g. MA(1):
+\[
+\widehat\rho(1)=\frac{\beta}{1+\beta^2}.
+\]
+This yields multiple solutions, of which invertibility selects one, but the estimator is inefficient and not recommended.
+
+\subsubsection*{Conditional Sum of Squares (CSS)}
+
+For invertible MA(1):
+\[
+E_t=X_t-\beta E_{t-1}
+=X_t-\beta X_{t-1}+\beta^2X_{t-2}-\cdots.
+\]
+Thus innovations can be expressed through observations and parameters. CSS assumes pre-sample innovations \(E_t=0\) for \(t\le0\) and minimizes
+\[
+\boxed{CSS(\beta)=\sum_{t=1}^nE_t(\beta)^2.}
+\]
+Because parameters appear non-linearly, numerical optimization is required. The same principle extends to MA($q$). CSS relies fundamentally on invertibility.
+
+\subsubsection*{MLE}
+
+With Gaussian innovations, \((X_1,\ldots,X_n)\sim N(0,V)\), or \(N(m\mathbf1,V)\) for a shifted process. MLE jointly estimates
+\[
+m,\beta_1,\ldots,\beta_q,\sigma_E^2
+\]
+through nonlinear likelihood optimization. In practice:
+\[
+\boxed{\text{CSS initial values}\rightarrow\text{MLE final fit}.}
+\]
+MLE is asymptotically normal/efficient and yields standard errors; strong skewness and major outliers remain problematic.
+
+\subsection{MA Diagnostics}
+
+Identify MA($q$) from stationarity + ACF cutoff at \(q\) + PACF decay. After estimation, residuals should resemble White Noise. In financial series, residuals may have no linear autocorrelation but still show long tails/volatility clustering: then the conditional mean may be adequately modeled while conditional variance is not.
+
+% ============================================================
+\section{ARMA($p,q$) Models}
+
+ARMA combines AR and MA dependence:
+\[
+\boxed{
+X_t=\sum_{i=1}^p\alpha_iX_{t-i}
++E_t+\sum_{j=1}^q\beta_jE_{t-j}
+}
+\]
+or compactly
+\[
+\boxed{\Phi(B)X_t=\Theta(B)E_t}.
+\]
+ARMA models generate a broader range of dependence structures and often achieve this with fewer parameters than pure high-order AR/MA models.
+
+\subsection{Stationarity and Invertibility}
+
+AR polynomial determines stationarity:
+\[
+\boxed{\text{stationary}\iff
+\Phi(z)=0\Rightarrow|z|>1.}
+\]
+MA polynomial determines invertibility:
+\[
+\boxed{\text{invertible}\iff
+\Theta(z)=0\Rightarrow|z|>1.}
+\]
+If both hold, ARMA admits convergent AR($\infty$) and MA($\infty$) representations. Unshifted stationary ARMA has \(E[X_t]=0\); practical models often use \(Y_t=m+X_t\).
+
+% ============================================================
+\subsection{ACF/PACF Identification}
+
+\[
+\boxed{
+\begin{array}{c|c|c}
+\text{Model} & \text{ACF} & \text{PACF}\\ \hline
+AR(p) & \text{exp. decay} & \text{cutoff at }p\\
+MA(q) & \text{cutoff at }q & \text{exp. decay}\\
+ARMA(p,q) & \text{decay + drop} & \text{decay + drop}
+\end{array}}
+\]
+
+For ARMA, neither ACF nor PACF usually becomes exactly zero after a finite lag. Both show infinite decay, often with a superimposed drop: ACF drop roughly reflects \(q\), PACF drop roughly reflects \(p\). Visibility depends on coefficients; AR or MA part may dominate.
+
+Thus:
+\[
+\boxed{\text{neither ACF nor PACF cleanly cuts off}\Rightarrow\text{consider ARMA}.}
+\]
+
+% ============================================================
+\subsection{Fitting ARMA($p,q$)}
+
+Identification combines stationarity, ACF/PACF, low-order drops, parsimony, information criteria and residual analysis. Because MA terms contain unobserved innovations, closed-form OLS is unavailable.
+
+\key{CSS:} recursively express innovations as functions of observations/parameters, set pre-sample innovations to zero, numerically minimize \(\sum_t\widehat E_t^2\).
+
+\key{MLE:} under Gaussian innovations, the time-series vector is multivariate Gaussian; jointly estimate
+\[
+m,\alpha_1,\ldots,\alpha_p,\beta_1,\ldots,\beta_q,\sigma_E^2.
+\]
+CSS estimates can provide starting values. MLE gives asymptotically normal/efficient estimates and standard errors.
+
+\subsection{Parsimony}
+
+A stationary/invertible ARMA can be represented as AR($\infty$) or MA($\infty$), so a low-order ARMA can often replace a high-order pure AR/MA. High-order alternatives are statistically wasteful because every parameter reduces estimation precision:
+\[
+\boxed{\text{prefer low-order ARMA to equivalent high-order AR/MA}.}
+\]
+If a coefficient CI contains zero, removing the corresponding term may produce a better parsimonious model.
+
+% ============================================================
+\section{Information Criteria}
+
+Let \(K=p+q+k+1\), where \(k=1\) if a global mean is estimated and \(k=0\) otherwise; \(+1\) is innovation variance.
+
+\key{AIC:}
+\[
+\boxed{AIC=-2\log L+2K}.
+\]
+Likelihood rewards in-sample fit; \(2K\) penalizes complexity.
+
+\key{AICc:}
+\[
+\boxed{AIC_c=AIC+\frac{2K(K+1)}{n-K-1}}.
+\]
+It adds a finite-sample penalty and approaches AIC as \(n\to\infty\).
+
+\key{BIC:}
+\[
+\boxed{BIC=-2\log L+\log(n)K
+=AIC+(\log n-2)K.}
+\]
+For sufficiently large \(n\), BIC penalizes complexity more strongly than AIC.
+
+Different criteria may choose different models because several candidates can perform almost equally well; there need not be one uniquely ``correct'' model.
+
+\subsection{Automatic Model Choice}
+
+One may search over candidate \((p,q)\) and minimize AIC/AICc/BIC. ARMA models are intended to be parsimonious, so search orders should usually remain small.
+
+Crucial:
+\[
+\boxed{\text{automatic selection always returns a best candidate, not necessarily a good model}.}
+\]
+Therefore information-criterion selection must always be followed by residual analysis. Lower AIC does \emph{not} overrule clearly non-White-Noise residuals; a slightly worse AIC with adequate residuals can be preferable.
+
+% ============================================================
+\section{Model Identification: Fast Scheme}
+
+For a stationary series:
+\[
+\boxed{
+\begin{array}{lll}
+\text{ACF decays}+\text{PACF cutoff at }p &\Rightarrow& AR(p),\\
+\text{ACF cutoff at }q+\text{PACF decays} &\Rightarrow& MA(q),\\
+\text{ACF decays}+\text{PACF decays} &\Rightarrow& ARMA(p,q).
+\end{array}}
+\]
+
+Practical workflow:
+\[
+\boxed{
+\text{ACF/PACF}
+\rightarrow
+\text{small candidate orders}
+\rightarrow
+\text{estimate}
+\rightarrow
+\text{AIC/AICc/BIC support}
+\rightarrow
+\text{residual validation}.
+}
+\]
+
+Final criterion:
+\[
+\boxed{\widehat E_t\text{ should resemble White Noise}.}
+\]
+Remaining residual ACF/PACF structure \(\Rightarrow\) modify/increase conditional-mean model; no linear residual dependence but changing residual variance \(\Rightarrow\) problem may concern conditional variance rather than ARMA dependence.
+
+\end{multicols}
+
+
+
+\begin{multicols}{2}
+\raggedcolumns
+
+% ============================================================
+\section{ARIMA Models}
+
+ARIMA extends ARMA to non-stationary series whose trend can be removed by differencing. A series \(X_t\) is \key{ARIMA\((p,d,q)\)} if its \(d\)-th lag-1 difference
+\[
+Y_t=(1-B)^dX_t
+\]
+is ARMA\((p,q)\). Hence
+\[
+\boxed{\Phi(B)(1-B)^dX_t=\Theta(B)E_t}.
+\]
+Here \(p,q\) describe AR/MA dependence after differencing, while \(d\) is the differencing order needed to obtain stationarity. Usually \(d=1\); \(d=2\) is rarely necessary.
+
+If variance increases with the level, a variance-stabilizing transformation (often log/Box--Cox) should be applied \emph{before} differencing.
+
+\subsection{Identification and Fitting}
+
+Workflow:
+\[
+\boxed{
+\text{transform}\rightarrow
+\text{choose }d\rightarrow
+\text{ACF/PACF of differences}\rightarrow
+(p,q)\rightarrow
+\text{fit}\rightarrow
+\text{residuals}
+}.
+\]
+
+\begin{enumerate}
+\item Choose \(d\) so \((1-B)^dX_t\) looks stationary.
+\item Analyze ACF/PACF of the differenced series exactly as for ARMA: identify plausible \(p,q\).
+\item Estimate ARIMA parameters, typically by MLE with CSS starting values.
+\item Residuals must resemble White Noise. If several models are adequate, use AIC/parsimony as additional criteria.
+\end{enumerate}
+
+If one manually fits ARMA to the differenced series, no constant should normally be included after removal of a trend; a non-zero constant in the differenced process corresponds to a \key{drift} in the original series.
+
+\subsection{Unit Root Interpretation}
+
+An ARIMA can be rewritten algebraically as an ARMA model on \(X_t\), but its AR polynomial necessarily contains unit roots. Example:
+\[
+(1-B)X_t=Y_t,\qquad \Phi(B)Y_t=\Theta(B)E_t
+\]
+implies
+\[
+\Phi(B)(1-B)X_t=\Theta(B)E_t.
+\]
+Thus the AR polynomial contains the root \(B=1\):
+\[
+\boxed{\text{ARIMA non-stationarity corresponds to unit roots}.}
+\]
+
+% ------------------------------------------------------------
+\subsection{Ambiguity: ARMA vs ARIMA}
+
+It may be unclear whether a slowly varying series is genuinely non-stationary or a realization from a highly persistent stationary process. A slowly decaying ACF may be compatible with either interpretation.
+
+Possible models can therefore include both
+\[
+ARMA(p,q)
+\qquad\text{and}\qquad
+ARIMA(p,1,q).
+\]
+
+Model choice should combine:
+\begin{itemize}
+\item appearance of original/differenced series;
+\item ACF/PACF;
+\item residual adequacy;
+\item AIC;
+\item \key{scientific interpretation}.
+\end{itemize}
+
+Differencing fundamentally changes the question being modeled. An ARMA on levels explains long-term level variation; ARIMA after differencing explains \emph{changes} from one period to the next. Thus even models with similar residual quality/AIC can have very different scientific interpretations:
+\[
+\boxed{\text{model choice is not purely numerical}.}
+\]
+
+% ============================================================
+\section{SARIMA Models}
+
+SARIMA extends ARIMA to deterministic seasonal non-stationarity. For seasonal period \(s\), seasonal differencing is
+\[
+(1-B^s)X_t=X_t-X_{t-s}.
+\]
+Often this removes seasonality but leaves trend, requiring additional ordinary differencing:
+\[
+\boxed{
+Z_t=(1-B)^d(1-B^s)^D X_t.
+}
+\]
+Typically
+\[
+\boxed{d,D\in\{0,1\},\qquad D=1\text{ usually sufficient}.}
+\]
+
+A \key{SARIMA\((p,d,q)(P,D,Q)_s\)} satisfies
+\[
+\boxed{
+\Phi(B)\Phi_s(B^s)Z_t=
+\Theta(B)\Theta_s(B^s)E_t,
+}
+\]
+where
+\[
+Z_t=(1-B)^d(1-B^s)^DX_t.
+\]
+\((p,d,q)\) describe ordinary/short-term structure, while \((P,D,Q)\) describe seasonal structure at multiples of \(s\).
+
+% ------------------------------------------------------------
+\subsection{Seasonal ACF/PACF}
+
+After seasonal/trend differencing, dependence may remain at:
+\begin{itemize}
+\item \key{small lags}: determines ordinary orders \(p,q\);
+\item \key{multiples of \(s\)}: determines seasonal orders \(P,Q\).
+\end{itemize}
+
+Large ACF/PACF coefficients around \(s,2s,\ldots\) are characteristic of remaining/evolving seasonal dependence.
+
+Thus:
+\[
+\boxed{
+\begin{array}{l}
+\text{low-lag ACF/PACF}\Rightarrow p,q,\\
+\text{lags }s,2s,\ldots\Rightarrow P,Q.
+\end{array}}
+\]
+
+Cutoffs are often unclear, so low-order AIC grid search can complement visual identification, but residual validation remains mandatory.
+
+% ------------------------------------------------------------
+\subsection{Airline Model}
+
+A basic seasonal model combines an ordinary MA(1) and a seasonal MA(1):
+\[
+Z_t=(1+\beta B)(1+\xi B^s)E_t.
+\]
+Expanding:
+\[
+\boxed{
+Z_t=E_t+\beta E_{t-1}
++\xi E_{t-s}
++\beta\xi E_{t-s-1}.
+}
+\]
+Although algebraically this is an MA\((s+1)\), almost all intermediate coefficients are zero. It is therefore parsimoniously represented as
+\[
+\boxed{SARIMA(0,1,1)(0,1,1)_s}
+\]
+when ordinary and seasonal first differences are both required.
+
+This illustrates why seasonal polynomials are preferable to fitting huge ordinary ARMA orders.
+
+% ------------------------------------------------------------
+\subsection{SARIMA Workflow}
+
+\begin{enumerate}
+\item Apply seasonal differencing \((1-B^s)^D\), usually \(D=1\).
+\item Inspect resulting series; if trend remains, additionally apply \((1-B)^d\), usually \(d=1\).
+\item Analyze ACF/PACF of final stationary series \(Z_t\): low lags \(\to p,q\); multiples of \(s\) \(\to P,Q\).
+\item Fit the SARIMA model to the \key{original series} with the chosen differencing/orders.
+\item Residuals must resemble White Noise; if multiple adequate candidates remain, use AIC/parsimony.
+\end{enumerate}
+
+Main advantage of ARIMA/SARIMA: trend, seasonality and stochastic dependence are handled in one model, making forecasting convenient, although decomposition is less transparent.
+
+% ============================================================
+\section{Conditional Heteroskedasticity}
+
+Ordinary heteroskedasticity may occur when variance increases with the \emph{level} and can often be stabilized through a log transformation. A different phenomenon is \key{conditional heteroskedasticity}: periods of high and low volatility cluster in time.
+
+Financial returns often show:
+\[
+\boxed{\rho_X(k)\approx0}
+\]
+while
+\[
+\boxed{\rho_{X^2}(k)\neq0}.
+\]
+Thus the series may appear White Noise in its ordinary ACF while still being dependent through its conditional variance. This does \emph{not} necessarily violate stationarity.
+
+General representation:
+\[
+X_t=\mu_t+E_t,\qquad
+E_t=\sigma_tW_t,
+\]
+where \(W_t\) is White Noise with \(E[W_t]=0,\operatorname{Var}(W_t)=1\), and
+\[
+\sigma_t^2=\operatorname{Var}(X_t\mid X_{t-1},X_{t-2},\ldots)
+\]
+is time-varying. Dependence may simultaneously exist in mean and variance, so ARMA and GARCH components can be combined.
+
+% ============================================================
+\section{ARCH Models}
+
+For simplicity assume \(\mu_t=0\), so \(X_t=E_t=\sigma_tW_t\).
+
+An \key{ARCH(1)} process has
+\[
+\boxed{
+E_t=W_t\sqrt{\alpha_0+\alpha_1E_{t-1}^2}.
+}
+\]
+Hence the conditional variance is
+\[
+\boxed{
+\sigma_t^2=\alpha_0+\alpha_1E_{t-1}^2.
+}
+\]
+
+Since \(E[W_t^2]=1\), large past squared innovations increase current conditional variance. Thus volatility clusters.
+
+The variance dynamics resemble an AR(1) model applied to squared observations, motivating analysis of the ACF/PACF of \(E_t^2\).
+
+General \key{ARCH(\(p\))}:
+\[
+\boxed{
+E_t=W_t
+\sqrt{\alpha_0+\sum_{i=1}^{p}\alpha_iE_{t-i}^2}.
+}
+\]
+
+Identification therefore relies primarily on:
+\[
+\boxed{\text{ACF/PACF of squared observations/residuals}.}
+\]
+For an ARCH-like process the ordinary ACF can be negligible while the squared ACF displays clear persistence.
+
+After fitting, inspect both:
+\[
+\boxed{
+ACF/PACF(E_t)
+\quad\text{and}\quad
+ACF/PACF(E_t^2).
+}
+\]
+The first checks remaining conditional-mean dependence; the second checks remaining volatility dependence.
+
+% ============================================================
+\section{GARCH Models}
+
+ARCH can require many lagged squared innovations. GARCH provides an ARMA-like parsimonious representation of conditional variance.
+
+Let
+\[
+E_t=W_t\sqrt{H_t}.
+\]
+A \key{GARCH\((p,q)\)} variance process is
+\[
+\boxed{
+H_t=\alpha_0+
+\sum_{i=1}^{q}\alpha_iE_{t-i}^2+
+\sum_{j=1}^{p}\beta_jH_{t-j}.
+}
+\]
+
+Thus current variance depends on:
+\begin{itemize}
+\item recent squared shocks \(E_{t-i}^2\);
+\item previous conditional variances \(H_{t-j}\).
+\end{itemize}
+
+Interpretation:
+\[
+\boxed{\text{ARCH: AR-type model for squared shocks}}
+\]
+whereas
+\[
+\boxed{\text{GARCH: ARMA-type model for conditional variance}.}
+\]
+
+GARCH does \key{not} predict the direction/level of a return:
+\[
+\text{it does not tell whether }X_{t+1}>0\text{ or }X_{t+1}<0.
+\]
+It predicts the expected \key{magnitude/volatility} of future movements, useful for risk assessment.
+
+% ============================================================
+\section{Time Series Regression}
+
+General model:
+\[
+\boxed{
+Y_t=\beta_0+\beta_1x_{t1}+\cdots+\beta_px_{tp}+E_t.
+}
+\]
+Predictors may be:
+\begin{itemize}
+\item actual explanatory time series;
+\item deterministic functions of time, e.g. trend;
+\item seasonal dummy variables;
+\item possibly lagged predictors.
+\end{itemize}
+
+Time-series regression is used both for parametric decomposition and for explaining a response using external variables.
+
+Unlike ARMA modeling, response and predictors themselves do \emph{not} have to be stationary. Important assumptions are:
+\[
+\boxed{\text{no feedback from }Y_t\text{ to explanatory }x_t}
+\]
+and
+\[
+\boxed{E_t\text{ independent of explanatory variables}.}
+\]
+Errors may, however, be serially correlated.
+
+Using many lagged predictors quickly creates too many parameters; for extensive lag-response relationships, cross-correlation/transfer-function methods are more suitable.
+
+% ------------------------------------------------------------
+\subsection{Problem with OLS}
+
+Standard OLS assumes
+\[
+E[E]=0,\qquad
+\operatorname{Var}(E)=\sigma^2I.
+\]
+In time-series regression, errors often satisfy instead
+\[
+\operatorname{Cov}(E_t,E_{t-k})\neq0.
+\]
+
+If regressors remain exogenous, correlated errors imply:
+\[
+\boxed{\widehat\beta_{OLS}\text{ remains unbiased}}
+\]
+but
+\[
+\boxed{\widehat\beta_{OLS}\text{ is no longer efficient}.}
+\]
+
+More importantly, ordinary OLS standard errors can be badly wrong, usually too small:
+\[
+\boxed{\text{correlated errors}\Rightarrow
+\text{spurious significance / false conclusions}.}
+\]
+
+Therefore coefficients, \(t\)-tests, CIs and partial \(F\)-tests from ordinary regression output must not be trusted until residual independence has been checked.
+
+% ============================================================
+\subsection{Finding Correlated Regression Errors}
+
+Always start with OLS, then inspect residuals:
+\[
+r_t=y_t-\widehat y_t.
+\]
+
+Use:
+\begin{itemize}
+\item usual regression diagnostics for mean/variance/normality/outliers;
+\item residual time-series plot;
+\item residual ACF and PACF.
+\end{itemize}
+
+Identify an ARMA structure in residuals exactly as for any stationary series. Example:
+\[
+\text{ACF exponential decay + PACF cutoff at 2}
+\Rightarrow
+\text{AR(2) errors}.
+\]
+
+Then fit the proposed ARMA model to OLS residuals and verify that \emph{its innovations} resemble White Noise.
+
+Parsimony remains essential: e.g. an AIC-selected AR(14) for \(n=30\) is unreasonable if an AR(1) already yields adequate White Noise innovations.
+
+% ============================================================
+\subsection{Durbin--Watson Test}
+
+Durbin--Watson tests only lag-1 residual correlation:
+\[
+H_0:\rho(1)=0
+\qquad\text{vs}\qquad
+H_A:\rho(1)\neq0.
+\]
+Statistic:
+\[
+\boxed{
+D=
+\frac{\sum_{t=2}^{n}(r_t-r_{t-1})^2}
+{\sum_{t=1}^{n}r_t^2}
+}
+\]
+with approximate relation
+\[
+\boxed{D\approx2(1-\widehat\rho(1)).}
+\]
+
+Interpretation:
+\[
+D\approx0\Rightarrow\text{strong positive lag-1 corr.},\quad
+D\approx2\Rightarrow\text{uncorrelated},\quad
+D\approx4\Rightarrow\text{strong negative lag-1 corr.}
+\]
+
+Major limitation:
+\[
+\boxed{\text{DW only detects lag-1 correlation}.}
+\]
+If residuals follow AR(\(p>1\)) with small \(\rho(1)\), DW may fail completely despite strong higher-order dependence. Therefore the script does \key{not recommend} it as the primary diagnostic; residual ACF/PACF is more informative.
+
+% ============================================================
+\section{Cochrane--Orcutt Method}
+
+Suppose
+\[
+Y_t=\beta_0+\sum_{j=1}^{p}\beta_jx_{tj}+E_t,
+\qquad
+E_t=\alpha E_{t-1}+U_t,
+\]
+with \(U_t\overset{iid}{\sim}N(0,\sigma_U^2)\).
+
+Transform:
+\[
+Y_t'=Y_t-\alpha Y_{t-1},
+\qquad
+x_{tj}'=x_{tj}-\alpha x_{t-1,j}.
+\]
+Using \(E_t-\alpha E_{t-1}=U_t\),
+\[
+\boxed{
+Y_t'=\beta_0(1-\alpha)+
+\sum_{j=1}^{p}\beta_jx_{tj}'+U_t.
+}
+\]
+The transformed model has iid errors. Crucially, slope coefficients \(\beta_j\) are unchanged by the transformation.
+
+Since \(\alpha\) is unknown, Cochrane--Orcutt proceeds iteratively:
+\begin{enumerate}
+\item OLS on original model \(\to\widehat\beta\) and residuals;
+\item fit AR(1) to residuals \(\to\widehat\alpha\);
+\item transform \(Y,x\) using \(\widehat\alpha\);
+\item OLS on transformed model; potentially iterate.
+\end{enumerate}
+
+The resulting coefficients and standard errors are valid when the assumed error model is correct. The method is historically important and illustrates the central idea, but simultaneous likelihood-based estimation is preferred.
+
+% ============================================================
+\section{Generalized Least Squares}
+
+OLS assumes
+\[
+\operatorname{Var}(E)=\sigma^2I.
+\]
+For correlated time-series errors assume
+\[
+\boxed{\operatorname{Var}(E)=\sigma^2\Sigma},
+\]
+where \(\Sigma\) describes their correlation structure.
+
+Take a Cholesky decomposition
+\[
+\Sigma=SS^T.
+\]
+From \(y=X\beta+E\), multiply by \(S^{-1}\):
+\[
+S^{-1}y=S^{-1}X\beta+S^{-1}E.
+\]
+Define \(y'=S^{-1}y,\ X'=S^{-1}X,\ E'=S^{-1}E\). Then
+\[
+\operatorname{Var}(E')
+=S^{-1}(\sigma^2\Sigma)S^{-T}
+=\sigma^2I.
+\]
+Hence the transformed problem has uncorrelated errors.
+
+The \key{GLS estimator} is
+\[
+\boxed{
+\widehat\beta_{GLS}
+=(X^T\Sigma^{-1}X)^{-1}
+X^T\Sigma^{-1}y
+}
+\]
+and
+\[
+\boxed{
+\operatorname{Var}(\widehat\beta_{GLS})
+=\sigma^2(X^T\Sigma^{-1}X)^{-1}.
+}
+\]
+
+Thus GLS correctly accounts for serial error dependence and provides valid standard errors/inference.
+
+% ------------------------------------------------------------
+\subsection{Unknown Error Covariance}
+
+In practice \(\Sigma\) is unknown. Two approaches:
+
+\key{Iterative approach:} OLS \(\to\) model residuals by ARMA \(\to\widehat\Sigma\) \(\to\) GLS; conceptually this generalizes Cochrane--Orcutt.
+
+\key{Preferred approach:} simultaneously estimate regression coefficients, ARMA error parameters and variance by Maximum Likelihood/REML.
+
+Hence:
+\[
+\boxed{
+\text{regression model}
++
+\text{ARMA model for errors}
+}
+\]
+are estimated jointly.
+
+% ------------------------------------------------------------
+\subsection{GLS Residual Check}
+
+A subtle but important point from the script: the ordinary/raw residuals of the GLS regression need \emph{not} look like White Noise. They should still exhibit the ARMA structure that was explicitly assumed for \(E_t\).
+
+If errors were modeled as AR(2), verify:
+\[
+\boxed{\text{raw GLS residual ACF/PACF should resemble AR(2).}}
+\]
+
+What must be White Noise are the innovations obtained after accounting for the specified error-correlation structure.
+
+Thus GLS validation asks whether the assumed ARMA correlation model is compatible with the observed residual dependence.
+
+% ------------------------------------------------------------
+\subsection{OLS vs GLS Inference}
+
+With correlated errors, OLS and GLS point estimates can be rather close because OLS remains unbiased. The major discrepancy is often in uncertainty:
+\[
+\boxed{
+SE_{OLS}\text{ can severely underestimate true uncertainty}.
+}
+\]
+
+Consequently GLS confidence intervals can be several times wider than OLS intervals. Significant effects under GLS can be trusted; significance that disappears after GLS was likely spurious.
+
+For factor predictors such as seasonality, significance must be assessed jointly through a partial \(F\)-type test rather than testing individual dummy coefficients separately.
+
+Simulation evidence in the script illustrates:
+\[
+\boxed{
+E[\widehat\beta_{OLS}]\approx
+E[\widehat\beta_{GLS}]=\beta
+}
+\]
+but OLS standard-error estimates can be extremely poor when correlation is ignored.
+
+% ============================================================
+\section{Missing Predictors and Serial Errors}
+
+Correlated regression residuals are often a symptom rather than the fundamental problem:
+\[
+\boxed{\text{serially correlated errors may indicate omitted predictors}.}
+\]
+
+Therefore, before applying GLS, ask whether an obvious systematic explanatory variable has been omitted.
+
+Example logic: a regression may exhibit strong AR-like residual dependence because a seasonal effect was left out. Adding the seasonal predictor can simultaneously:
+\begin{itemize}
+\item improve interpretation;
+\item remove residual structure;
+\item restore ordinary regression assumptions;
+\item eliminate the need for GLS.
+\end{itemize}
+
+This is preferable whenever scientifically plausible:
+\[
+\boxed{
+\text{explain dependence through meaningful predictors before merely modeling it in errors}.
+}
+\]
+
+A useful example is a log--log regression:
+\[
+\log Y_t=\beta_0+\beta_1\log X_t+E_t,
+\]
+which on the original scale corresponds to the power law
+\[
+\boxed{Y_t\approx e^{\beta_0}X_t^{\beta_1}.}
+\]
+If quarterly residuals show systematic dependence, adding an omitted seasonal factor may produce separate seasonal power-law relations and remove the autocorrelation.
+
+Final rule:
+\[
+\boxed{
+\text{use GLS only after checking that important/obvious predictors are not missing}.
+}
+\]
+
+% ============================================================
+\section{Compact Workflow: Regression with Time Series}
+
+\[
+\boxed{
+\begin{array}{c}
+\text{Specify interpretable regression}\\
+\downarrow\\
+\text{Fit OLS}\\
+\downarrow\\
+\text{ordinary diagnostics + residual TS/ACF/PACF}\\
+\downarrow\\
+\text{serial correlation?}
+\end{array}}
+\]
+
+If \key{no}: standard OLS inference is valid.
+
+If \key{yes}:
+\[
+\boxed{
+\text{check omitted predictors first}
+}
+\]
+and extend the model if scientifically meaningful. If dependence remains:
+\[
+\boxed{
+\text{identify ARMA error structure}
+\rightarrow
+\text{GLS / simultaneous ML}
+\rightarrow
+\text{validate error structure}
+\rightarrow
+\text{perform inference}.
+}
+\]
+
+Key exam facts:
+\[
+\boxed{
+\begin{array}{l}
+\text{correlated errors do not bias OLS coefficients under exogeneity;}\\
+\text{they destroy OLS efficiency and standard-error validity;}\\
+\text{DW only tests lag-1 correlation;}\\
+\text{Cochrane--Orcutt transforms away AR(1) error dependence;}\\
+\text{GLS uses }\Sigma^{-1}\text{ to account for general correlation;}\\
+\text{missing predictors can be the actual source of residual dependence.}
+\end{array}}
+\]
+
+\end{multicols}
+
+
+
+\begin{multicols}{2}
+\raggedcolumns
+
+% ============================================================
+\section{Forecasting: General Principles}
+
+Forecasting extrapolates the observed time-series structure into the future and is therefore inherently uncertain. Reliability depends on: intrinsic innovation noise; continuity of the data-generating process; correct model specification/order; parameter-estimation uncertainty. Structural breaks/outliers or unprecedented events cannot realistically be forecast from historical dependence alone.
+
+A point forecast is \emph{not} the future realization but an estimate of its conditional mean. Given observations \(X_1,\ldots,X_n\), the minimum-MSE \(k\)-step forecast is
+\[
+\boxed{\widehat X_{n+k|n}=E[X_{n+k}\mid X_1,\ldots,X_n].}
+\]
+Future innovations are unpredictable:
+\[
+\boxed{E[E_{n+k}\mid X_1,\ldots,X_n]=0,\quad k>0.}
+\]
+Point forecasts should therefore be accompanied by \key{prediction intervals}, describing the uncertainty of future observations.
+
+Forecasts are generally more reliable when signal/noise is high and for short horizons. Increasing horizon usually means less dependence on current observations and larger uncertainty.
+
+% ============================================================
+\section{Forecasting Stationary Series}
+
+Assume an AR/MA/ARMA model has been correctly identified, estimated, and its residuals resemble White Noise.
+
+% ------------------------------------------------------------
+\subsection{Forecasting AR(1)}
+
+For mean-zero stationary
+\[
+X_t=\alpha X_{t-1}+E_t,\qquad |\alpha|<1,
+\]
+the 1-step forecast is
+\[
+\boxed{\widehat X_{n+1|n}=\alpha x_n}.
+\]
+Recursively,
+\[
+\boxed{\widehat X_{n+k|n}=\alpha^k x_n}.
+\]
+Thus forecasts depend only on the last observation and
+\[
+\widehat X_{n+k|n}\to0=E[X_t].
+\]
+For a shifted process with mean \(m\),
+\[
+\boxed{\widehat X_{n+k|n}=m+\alpha^k(x_n-m)},
+\]
+so every stationary AR(1) forecast exponentially approaches the global mean.
+
+If innovations are Gaussian with variance \(\sigma_E^2\),
+\[
+X_{n+k}\mid X_{1:n}\sim
+N\!\left(
+\alpha^kx_n,\,
+\sigma_E^2\sum_{j=0}^{k-1}\alpha^{2j}
+\right).
+\]
+Hence a 95\% PI is
+\[
+\boxed{
+\alpha^kx_n\pm1.96\,\sigma_E
+\sqrt{\sum_{j=0}^{k-1}\alpha^{2j}}
+}.
+\]
+For \(k=1\), uncertainty is only \(\sigma_E^2\); as \(k\to\infty\),
+\[
+\operatorname{Var}(X_{n+k}\mid X_{1:n})
+\to
+\frac{\sigma_E^2}{1-\alpha^2}
+=\sigma_X^2.
+\]
+Thus stationary-process prediction intervals converge to a \key{finite constant width} determined by unconditional process variance.
+
+Practical intervals plug in estimated parameters and ignore parameter/model uncertainty, so nominal 95\% intervals typically \key{undercover}, especially for short series.
+
+% ------------------------------------------------------------
+\subsection{Forecasting AR($p$)}
+
+For
+\[
+X_t=\alpha_1X_{t-1}+\cdots+\alpha_pX_{t-p}+E_t,
+\]
+the 1-step forecast is
+\[
+\boxed{
+\widehat X_{n+1|n}
+=\alpha_1x_n+\alpha_2x_{n-1}+\cdots+\alpha_px_{n-p+1}.
+}
+\]
+
+For \(k>1\), recursively use observed values whenever the required index is \(\le n\), and previously forecast values otherwise:
+\[
+\boxed{
+\widehat X_{n+k|n}
+=\sum_{i=1}^{p}\alpha_i
+\widetilde X_{n+k-i},
+}
+\]
+where
+\[
+\widetilde X_t=
+\begin{cases}
+x_t,&t\le n,\\
+\widehat X_{t|n},&t>n.
+\end{cases}
+\]
+
+Every forecast ultimately depends only on the last \(p\) observations:
+\[
+\widehat X_{n+k|n}
+=\sum_{j=1}^{p}\psi_j^{(k)}x_{n-j+1}.
+\]
+Thus AR forecasts possess a finite-memory/Markov-type property. For any stationary AR($p$), long-horizon forecasts converge to the global mean.
+
+% ------------------------------------------------------------
+\subsection{Forecast Accuracy}
+
+True forecasting performance must be assessed \key{out-of-sample}: reserve a test period, fit only on training data, forecast the withheld period, then compare forecasts with observations. Training error is unsuitable for forecasting assessment because overparameterized models can fit training data extremely well while forecasting poorly.
+
+Forecast error:
+\[
+e_t=x_t-\widehat x_t.
+\]
+
+Absolute-scale measures:
+\[
+\boxed{
+MAE=\frac1h\sum_{t=n+1}^{n+h}|e_t|
+},\qquad
+\boxed{
+RMSE=
+\sqrt{\frac1h\sum_{t=n+1}^{n+h}e_t^2}.
+}
+\]
+RMSE penalizes large errors more strongly and is particularly natural because conditional-mean forecasting minimizes squared error.
+
+For relative-scale errors:
+\[
+\boxed{
+MAPE=
+\frac{100}{h}
+\sum_{t=n+1}^{n+h}
+\left|
+\frac{x_t-\widehat x_t}{x_t}
+\right|.
+}
+\]
+MAPE is scale-free but undefined when \(x_t=0\).
+
+Choice of error measure must match the application; not every available accuracy statistic is meaningful for every series.
+
+% ------------------------------------------------------------
+\subsection{Forecasts after Transformation}
+
+If forecasts are produced for
+\[
+Y_t=\log X_t,
+\]
+then
+\[
+e^{\widehat Y_{n+k|n}}
+\]
+is the \key{median} on the original scale. If the forecast distribution on the log-scale is approximately Gaussian with variance \(\widehat\sigma_k^2\), the mean is
+\[
+\boxed{
+\widehat E[X_{n+k}\mid X_{1:n}]
+=
+\exp\!\left(
+\widehat Y_{n+k|n}
++\frac{\widehat\sigma_k^2}{2}
+\right).
+}
+\]
+Therefore mean \(>\) median for the resulting right-skewed distribution. Back-transformed prediction intervals also become asymmetric.
+
+% ============================================================
+\section{Forecasting MA($q$)}
+
+For an invertible MA(1),
+\[
+X_t=E_t+\beta E_{t-1}.
+\]
+For \(k\ge2\), both innovations entering \(X_{n+k}\) are future innovations, hence
+\[
+\boxed{\widehat X_{n+k|n}=0,\quad k\ge2.}
+\]
+
+The 1-step forecast is
+\[
+\widehat X_{n+1|n}
+=\beta E[E_n\mid X_{1:n}],
+\]
+which is generally non-zero. Because \(E_n\) is latent, use invertibility and the AR($\infty$) representation:
+\[
+E_n=X_n-\beta X_{n-1}
++\beta^2X_{n-2}-\cdots.
+\]
+Thus approximately
+\[
+\boxed{
+\widehat X_{n+1|n}
+=
+\beta
+\sum_{j=0}^{n-1}
+(-\beta)^j x_{n-j},
+}
+\]
+taking unavailable pre-sample values as zero. Because \(|\beta|<1\), effects of remote observations decay exponentially.
+
+For MA($q$):
+\[
+\boxed{\widehat X_{n+k|n}=0,\qquad k>q}
+\]
+for a mean-zero model; horizons \(k\le q\) depend on estimated past innovations. For a shifted process, long-horizon forecasts equal the global mean.
+
+% ============================================================
+\section{Forecasting ARMA($p,q$)}
+
+For stationary and invertible
+\[
+X_t=
+\sum_{i=1}^{p}\alpha_iX_{t-i}
++E_t+
+\sum_{j=1}^{q}\beta_jE_{t-j},
+\]
+forecast recursively using:
+\[
+E[X_t\mid\mathcal F_n]
+=
+\begin{cases}
+x_t,&t\le n,\\
+\widehat X_{t|n},&t>n,
+\end{cases}
+\qquad
+E[E_t\mid\mathcal F_n]
+=
+\begin{cases}
+\widehat e_t,&t\le n,\\
+0,&t>n.
+\end{cases}
+\]
+Hence
+\[
+\boxed{
+\widehat X_{n+k|n}
+=
+\sum_{i=1}^{p}\alpha_i
+E[X_{n+k-i}\mid\mathcal F_n]
++
+\sum_{j=1}^{q}\beta_j
+E[E_{n+k-j}\mid\mathcal F_n].
+}
+\]
+
+Past innovations are estimated from the invertible AR($\infty$) representation, setting sufficiently remote/pre-sample observations to zero. This recursive scheme is the \key{Box--Jenkins forecasting procedure}.
+
+For every stationary ARMA:
+\[
+\boxed{\widehat X_{n+k|n}\to E[X_t]}
+\]
+and forecast convergence is typically exponential. Prediction-interval width converges to a constant determined by unconditional process variance.
+
+The AR part makes forecasts depend strongly on recent observations; the invertible MA part means, theoretically, all past observations can have diminishing influence through estimated innovations.
+
+% ============================================================
+\section{Forecasting ARIMA}
+
+For
+\[
+ARIMA(p,1,q),
+\qquad
+Y_t=(1-B)X_t=X_t-X_{t-1},
+\]
+\(Y_t\) is stationary ARMA($p,q$), so first forecast the differences
+\[
+\widehat Y_{n+1|n},\ldots,\widehat Y_{n+k|n}.
+\]
+Then integrate:
+\[
+\widehat X_{n+1|n}
+=x_n+\widehat Y_{n+1|n},
+\]
+\[
+\widehat X_{n+2|n}
+=x_n+\widehat Y_{n+1|n}
++\widehat Y_{n+2|n},
+\]
+and generally
+\[
+\boxed{
+\widehat X_{n+k|n}
+=
+x_n+
+\sum_{j=1}^{k}\widehat Y_{n+j|n}.
+}
+\]
+
+For an ordinary ARIMA\((p,1,q)\) without drift, forecasts eventually approach a \key{constant}. This differs critically from stationary ARMA only in uncertainty:
+\[
+\boxed{\text{ARMA PI width }\to\text{constant},\qquad
+\text{ARIMA PI width increases indefinitely}.}
+\]
+Integration accumulates future innovation uncertainty.
+
+% ------------------------------------------------------------
+\subsection{Drift}
+
+ARIMA with \(d=1\) does not automatically represent a deterministic linear trend. If
+\[
+E[\Delta X_t]=\delta\neq0,
+\]
+then
+\[
+\boxed{\Delta X_t=\delta+\text{stationary ARMA component}}
+\]
+and the original series contains a \key{drift}. Its forecast contains approximately
+\[
+x_n+k\delta,
+\]
+allowing continuation of a linear trend.
+
+However, prediction intervals may still fail to account adequately for uncertainty in the estimated drift/trend:
+\[
+\boxed{\text{forecast intervals are optimistic lower bounds on true extrapolation uncertainty}.}
+\]
+
+% ============================================================
+\section{Forecasting SARIMA}
+
+SARIMA forecasts are generated similarly:
+\[
+Z_t=(1-B)^d(1-B^s)^DX_t
+\]
+is stationary and forecast using its ARMA representation; forecasts are then integrated back through both ordinary and seasonal differencing.
+
+This extrapolates recent trend and seasonal behavior automatically. Prediction intervals usually widen strongly with horizon because uncertainty from both integrations accumulates.
+
+Main advantage:
+\[
+\boxed{\text{automatic all-in-one trend + seasonality + dependence forecast}.}
+\]
+Main disadvantage:
+\[
+\boxed{\text{little control over how trend/seasonality are extrapolated}.}
+\]
+
+A recent weakening/strengthening of trend in the training period can therefore substantially influence the future forecast even if domain knowledge suggests otherwise.
+
+% ============================================================
+\section{Forecasting Decomposed Series}
+
+For
+\[
+X_t=m_t+s_t+R_t,
+\]
+forecast each component separately:
+\[
+\boxed{
+\widehat X_{n+k}
+=
+\widehat m_{n+k}
++\widehat s_{n+k}
++\widehat R_{n+k}.
+}
+\]
+
+\key{Remainder:} model stationary \(R_t\) using an adequate ARMA model and forecast conventionally.
+
+\key{Seasonality:} if constant, repeat the previous seasonal cycle; if slowly evolving, typically repeat the last estimated seasonal effects. For strongly evolving seasonality, its evolution may be extrapolated separately.
+
+\key{Trend:} most difficult component. A practical heuristic is to estimate the recent average slope over a window approximately equal to the forecasting horizon and extrapolate linearly from the last estimated trend value.
+
+Thus if \(\widehat b\) is the slope estimated over the recent window,
+\[
+\boxed{
+\widehat m_{n+k}=m_n+k\widehat b.
+}
+\]
+
+Unlike automatic SARIMA, this approach explicitly permits \key{expert/domain adjustment} of the future trend. Such intervention must be transparently declared.
+
+Advantages: interpretable, flexible, ideal for scenario discussions/domain knowledge. Disadvantages: subjective/manual, harder to quantify uncertainty.
+
+Most uncertainty usually arises from trend extrapolation; hence meaningful prediction intervals can be difficult to construct. After log decomposition, direct exponentiation again yields the median, while obtaining a bias-corrected mean is less straightforward.
+
+% ------------------------------------------------------------
+\subsection{Automatic STL-Based Forecast}
+
+A common automatic STL strategy:
+\begin{enumerate}
+\item deseasonalize using STL;
+\item forecast the deseasonalized component (trend + remainder), commonly through exponential smoothing;
+\item forecast seasonality by repeating the last estimated seasonal pattern;
+\item add the two components.
+\end{enumerate}
+
+Prediction intervals generally account only for uncertainty in the deseasonalized forecast, \emph{not} uncertainty in extrapolating the seasonal component.
+
+% ============================================================
+\section{Simple Exponential Smoothing}
+
+Assume no deterministic trend/seasonality. Two extreme forecasts are:
+\[
+\widehat X_{n+k|n}=x_n
+\qquad\text{or}\qquad
+\widehat X_{n+k|n}=\bar x.
+\]
+Simple exponential smoothing provides a compromise by assigning exponentially decreasing weights to older observations:
+\[
+\boxed{
+w_i=\alpha(1-\alpha)^i,\qquad 0<\alpha<1.
+}
+\]
+Thus approximately
+\[
+\boxed{
+\widehat X_{n+k|n}
+=
+\sum_{i=0}^{n-1}
+\alpha(1-\alpha)^i x_{n-i}.
+}
+\]
+
+Equivalent recursive representation:
+\[
+\boxed{
+a_t=\alpha x_t+(1-\alpha)a_{t-1},
+}
+\]
+where \(a_t\) is the estimated current \key{level}. All future forecasts are
+\[
+\boxed{\widehat X_{n+k|n}=a_n,\qquad k\ge1.}
+\]
+
+Repeated substitution gives
+\[
+a_t=
+\alpha x_t+\alpha(1-\alpha)x_{t-1}
++\alpha(1-\alpha)^2x_{t-2}+\cdots.
+\]
+
+Interpretation:
+\[
+\alpha\to1
+\Rightarrow
+\text{little smoothing, strong weight on recent data};
+\]
+\[
+\alpha\to0
+\Rightarrow
+\text{strong smoothing, long memory}.
+\]
+
+High signal/rapid level changes \(\Rightarrow\) larger \(\alpha\); high noise relative to signal \(\Rightarrow\) smaller \(\alpha\).
+
+The parameter can be estimated by minimizing the \key{sum of squared one-step prediction errors}. Since
+\[
+e_t=x_t-a_{t-1},
+\]
+define
+\[
+\boxed{
+SSPE_1(\alpha)=\sum_{t=2}^{n}e_t^2.
+}
+\]
+Choose
+\[
+\boxed{\widehat\alpha=\arg\min_{\alpha\in(0,1)}SSPE_1(\alpha).}
+\]
+
+% ============================================================
+\section{Holt--Winters Method}
+
+Simple exponential smoothing extends to trend and seasonality using recursively updated \key{level \(a_t\)}, \key{slope \(b_t\)} and \key{seasonal effect \(s_t\)}. For additive seasonality with period \(p\):
+\[
+\boxed{
+a_t=
+\alpha(x_t-s_{t-p})
++(1-\alpha)(a_{t-1}+b_{t-1}),
+}
+\]
+\[
+\boxed{
+b_t=
+\beta(a_t-a_{t-1})
++(1-\beta)b_{t-1},
+}
+\]
+\[
+\boxed{
+s_t=
+\gamma(x_t-a_t)
++(1-\gamma)s_{t-p}.
+}
+\]
+
+Interpretation:
+\begin{itemize}
+\item \(\alpha\): speed of adaptation of level;
+\item \(\beta\): speed of adaptation of slope;
+\item \(\gamma\): speed of adaptation of seasonal pattern.
+\end{itemize}
+
+Large parameter \(\Rightarrow\) component reacts strongly to new data; small parameter \(\Rightarrow\) component evolves smoothly.
+
+Typical starting choices when nothing is known: \(a_1=x_1\), \(b_1=0\), seasonal states from zero or seasonal averages. Parameters may be selected by minimizing \(SSPE_1\).
+
+Forecast:
+\[
+\boxed{
+\widehat X_{n+k|n}
+=
+a_n+kb_n+s_{n+k-p}
+}
+\]
+with the seasonal index interpreted cyclically.
+
+Important distinction:
+\[
+\boxed{\beta=0\neq\text{no trend}.}
+\]
+\(\beta=0\) means the estimated slope is kept constant; eliminating the trend component entirely is a different model.
+
+If trend/seasonal amplitudes grow with the level, a log/Box--Cox transformation can turn multiplicative structure into additive structure before Holt--Winters fitting. Alternatively, multiplicative exponential-smoothing formulations exist.
+
+Forecasts can be very sensitive to whether trend and seasonality are enabled. A small in-sample difference may lead to a major long-horizon forecast difference, so domain-based model judgment remains important.
+
+% ============================================================
+\section{ETS Models}
+
+ETS provides a state-space formulation of exponential smoothing and automatically compares many candidate models using likelihood and an information criterion (typically AICc).
+
+ETS stands simultaneously for \key{Error--Trend--Seasonality}. Each component is classified as:
+\[
+E\in\{A,M\},\qquad
+T\in\{N,A,M\},\qquad
+S\in\{N,A,M\},
+\]
+where \(A=\) additive, \(M=\) multiplicative, \(N=\) absent. A damped additive trend may also be used.
+
+Examples:
+\[
+ETS(A,N,N)
+\]
+= additive-error simple exponential smoothing;
+\[
+ETS(A,N,A)
+\]
+= additive error, no trend, additive seasonality;
+\[
+ETS(M,A,M)
+\]
+= multiplicative error, additive trend, multiplicative seasonality.
+
+The method:
+\[
+\boxed{
+\text{fit candidate state-space models by MLE}
+\rightarrow
+\text{compare AIC/AICc/BIC}
+\rightarrow
+\text{forecast selected model}.
+}
+\]
+
+Advantages: very flexible and automatic; handles stationary, trending and seasonal series, additive/multiplicative structures. Disadvantage: automatic trend extrapolation is comparatively opaque and provides little domain-level control. Forecast quality must still be checked out-of-sample.
+
+% ============================================================
+\section{Forecasting: Key Distinctions}
+
+\[
+\boxed{
+\begin{array}{c|c|c}
+\text{Model} & \text{Long-run point forecast} & \text{PI width}\\ \hline
+ARMA & \text{global mean} & \to\text{constant}\\
+ARIMA(d=1) & \text{constant unless drift} & \uparrow\text{ indefinitely}\\
+ARIMA+drift & \text{linear extrapolation} & \text{may understate trend uncertainty}\\
+SARIMA & \text{trend/season extrapolation} & \uparrow\text{ with horizon}\\
+SES & \text{current smoothed level} & \text{model dependent}\\
+Holt--Winters & \text{level+trend+season} & \text{model dependent}
+\end{array}}
+\]
+
+No forecasting method protects against structural breaks or unforeseen events:
+\[
+\boxed{\text{forecast = extrapolation of assumed continuing structure}.}
+\]
+
+% ============================================================
+\section{Multivariate Time Series}
+
+Consider two stationary processes
+\[
+X_{1,t},\qquad X_{2,t}.
+\]
+Multivariate analysis studies their within-series and cross-series dependence. All theory here assumes both series are stationary; if necessary, transform/difference first.
+
+The scientific question is often whether changes in one series precede and explain changes in another, and with what delay.
+
+% ============================================================
+\section{Cross Covariance and Cross Correlation}
+
+Within-series autocovariances:
+\[
+\gamma_{11}(k)=\operatorname{Cov}(X_{1,t+k},X_{1,t}),\qquad
+\gamma_{22}(k)=\operatorname{Cov}(X_{2,t+k},X_{2,t}).
+\]
+
+Cross covariances:
+\[
+\boxed{
+\gamma_{12}(k)
+=
+\operatorname{Cov}(X_{1,t+k},X_{2,t}),
+}
+\]
+\[
+\gamma_{21}(k)
+=
+\operatorname{Cov}(X_{2,t+k},X_{1,t}).
+\]
+Stationarity makes them independent of absolute time and
+\[
+\boxed{\gamma_{12}(-k)=\gamma_{21}(k).}
+\]
+
+Cross correlation:
+\[
+\boxed{
+\rho_{12}(k)=
+\frac{\gamma_{12}(k)}
+{\sqrt{\gamma_{11}(0)\gamma_{22}(0)}},
+\qquad |\rho_{12}(k)|\le1.
+}
+\]
+Likewise,
+\[
+\boxed{\rho_{12}(-k)=\rho_{21}(k).}
+\]
+
+Interpretation under this convention:
+\[
+\rho_{12}(k)
+=
+\operatorname{Corr}(X_{1,t+k},X_{2,t}).
+\]
+Thus positive \(k\) means \(X_1\) is measured \(k\) steps \emph{after} \(X_2\); negative \(k\) means \(X_1\) precedes \(X_2\).
+
+Sample estimator:
+\[
+\widehat\gamma_{12}(k)
+=
+\frac1n
+\sum
+(x_{1,t+k}-\bar x_1)
+(x_{2,t}-\bar x_2),
+\]
+and
+\[
+\boxed{
+\widehat\rho_{12}(k)=
+\frac{\widehat\gamma_{12}(k)}
+{\sqrt{\widehat\gamma_{11}(0)
+\widehat\gamma_{22}(0)}}.
+}
+\]
+
+The plot of \(\widehat\rho_{12}(k)\) over positive and negative \(k\) is the \key{cross-correlogram}.
+
+% ============================================================
+\section{Problem with Raw Cross-Correlation}
+
+Raw cross-correlograms are difficult to interpret because \key{within-series autocorrelation contaminates/mixes cross-correlation estimates}. Standard confidence bounds shown as
+\[
+\pm\frac{2}{\sqrt n}
+\]
+are generally \key{wrong} for autocorrelated series.
+
+If cross-correlations vanish for sufficiently large lags,
+\[
+\operatorname{Var}(\widehat\rho_{12}(k))
+\]
+still depends on all auto- and cross-correlations of both processes.
+
+If the two processes are independent,
+\[
+\rho_{12}(j)=0\quad\forall j,
+\]
+then approximately
+\[
+\boxed{
+\operatorname{Var}(\widehat\rho_{12}(k))
+\approx
+\frac1n
+\sum_{j=-\infty}^{\infty}
+\rho_{11}(j)\rho_{22}(j).
+}
+\]
+
+For independent AR(1)'s with coefficients \(\alpha_1,\alpha_2\):
+\[
+\rho_{11}(j)=\alpha_1^{|j|},
+\qquad
+\rho_{22}(j)=\alpha_2^{|j|},
+\]
+so
+\[
+\boxed{
+\operatorname{Var}(\widehat\rho_{12}(k))
+\approx
+\frac1n
+\frac{1+\alpha_1\alpha_2}
+{1-\alpha_1\alpha_2}.
+}
+\]
+As \(\alpha_1,\alpha_2\to1\), variance can become very large even though true cross-correlation is zero. Hence large-looking raw cross-correlations may be purely spurious.
+
+Only if one series is White Noise and independent of the other:
+\[
+\boxed{
+\operatorname{Var}(\widehat\rho_{12}(k))
+\approx\frac1n
+}
+\]
+for small \(k\), making
+\[
+\boxed{\pm2/\sqrt n}
+\]
+approximately valid 95\% bounds.
+
+This motivates \key{prewhitening}.
+
+% ============================================================
+\section{Prewhitening}
+
+Goal: remove each series' internal serial dependence before studying cross-dependence.
+
+For stationary/invertible ARMA processes, there exist filters
+\[
+U_t=\sum_{i=0}^{\infty}a_iX_{1,t-i},
+\qquad
+V_t=\sum_{i=0}^{\infty}b_iX_{2,t-i},
+\]
+such that \(U_t,V_t\) are approximately White Noise. In practice these are the \key{residuals/innovations from fitted ARMA models}.
+
+Because prewhitened series have negligible autocorrelation, ordinary cross-correlation confidence bounds become meaningful.
+
+If
+\[
+\rho_{UV}(k)=0\quad\forall k,
+\]
+then the original processes show no linear cross-dependence either.
+
+Practical cross-correlation workflow:
+\[
+\boxed{
+\begin{array}{c}
+X_1,X_2\text{ stationary}\\
+\downarrow\\
+\text{fit adequate ARMA to each}\\
+\downarrow\\
+U_t,V_t=\text{residuals}\\
+\downarrow\\
+\text{cross-correlogram of }U,V\\
+\downarrow\\
+\text{interpret significant lags}.
+\end{array}}
+\]
+
+Thus:
+\[
+\boxed{\text{never interpret a raw cross-correlogram blindly when series are autocorrelated}.}
+\]
+
+% ============================================================
+\section{Transfer Function Models}
+
+Transfer functions quantify a \key{directional} relation:
+\[
+X_1\longrightarrow X_2.
+\]
+Assumptions:
+\begin{itemize}
+\item \(X_1\) (input) may influence \(X_2\) (output);
+\item no feedback from \(X_2\) to \(X_1\);
+\item influence is simultaneous or delayed into the future, never backwards in time.
+\end{itemize}
+
+After centering:
+\[
+\boxed{
+X_{2,t}
+=
+\sum_{j=0}^{\infty}
+\nu_jX_{1,t-j}
++E_t.
+}
+\]
+More generally with means:
+\[
+X_{2,t}-\mu_2
+=
+\sum_{j=0}^{\infty}
+\nu_j(X_{1,t-j}-\mu_1)+E_t.
+\]
+
+\(X_1\) is the \key{input}, \(X_2\) the \key{output}, and
+\[
+E[E_t]=0,\qquad
+\operatorname{Cov}(E_t,X_{1,s})=0\quad\forall t,s,
+\]
+although \(E_t\) itself may be autocorrelated.
+
+The coefficients
+\[
+\boxed{\nu_j}
+\]
+describe how a one-unit input change propagates to future output:
+\[
+\nu_0=\text{simultaneous effect},\qquad
+\nu_1=\text{effect after 1 step},\ldots
+\]
+
+Cross-covariance satisfies
+\[
+\boxed{
+\gamma_{21}(k)
+=
+\sum_{j=0}^{\infty}
+\nu_j\gamma_{11}(k-j).
+}
+\]
+Hence raw cross-correlation does \emph{not} directly equal transfer coefficients when the input is autocorrelated.
+
+% ------------------------------------------------------------
+\subsection{White-Noise Input Special Case}
+
+If \(X_1\) is White Noise,
+\[
+\gamma_{11}(k)=0,\qquad k\neq0,
+\]
+so
+\[
+\boxed{
+\gamma_{21}(k)=\nu_k\gamma_{11}(0),\quad k\ge0.
+}
+\]
+Therefore
+\[
+\boxed{
+\nu_k=
+\frac{\gamma_{21}(k)}{\gamma_{11}(0)}
+=
+\rho_{21}(k)
+\sqrt{\frac{\gamma_{22}(0)}{\gamma_{11}(0)}}.
+}
+\]
+
+Thus when the input is White Noise, transfer-function coefficients are proportional to cross-correlations.
+
+% ------------------------------------------------------------
+\subsection{Prewhitening for Transfer Functions}
+
+Generally the input is not White Noise. Fit an ARMA model to \(X_1\) and let its whitening filter be
+\[
+A(B).
+\]
+Then
+\[
+D_t=A(B)X_{1,t}
+\]
+is White Noise.
+
+Crucial: to preserve the same transfer coefficients, apply the \key{same filter} to the output:
+\[
+\boxed{
+Z_t=A(B)X_{2,t}.
+}
+\]
+Also
+\[
+U_t=A(B)E_t.
+\]
+
+The transformed transfer model is
+\[
+\boxed{
+Z_t=
+\sum_{j=0}^{\infty}\nu_jD_{t-j}+U_t,
+}
+\]
+with exactly the same \(\nu_j\) as the original model.
+
+Because \(D_t\) is White Noise,
+\[
+\boxed{
+\widehat\nu_k
+=
+\frac{\widehat\gamma_{ZD}(k)}
+{\widehat\sigma_D^2}
+=
+\widehat\rho_{ZD}(k)
+\frac{\widehat\sigma_Z}{\widehat\sigma_D},
+\qquad k\ge0.
+}
+\]
+
+This provides an interpretable estimate of both:
+\begin{itemize}
+\item \key{delay}: which \(k\)'s have non-zero \(\nu_k\);
+\item \key{magnitude}: size of each delayed effect.
+\end{itemize}
+
+The estimator is not fully statistically efficient because filtered output and transformed error may remain correlated, but it is practically useful.
+
+% ============================================================
+\section{Cross-Correlation vs Transfer Function}
+
+\[
+\boxed{
+\begin{array}{c|c}
+\text{Cross-correlation} & \text{Transfer function}\\ \hline
+\text{detects linear association} &
+\text{models directional influence}\\
+\text{uses positive/negative lags} &
+\text{uses causal lags }j\ge0\\
+\text{requires prewhitening for valid inference} &
+\text{whiten input and apply same filter to output}\\
+\text{magnitude mixed by input autocorrelation} &
+\nu_j\text{ gives interpretable lag effect}
+\end{array}}
+\]
+
+A significant prewhitened cross-correlation suggests a delayed relation; the transfer-function model then quantifies that relation.
+
+% ============================================================
+\section{Compact Exam Checklist}
+
+\begin{enumerate}
+\item MMSE forecast: \(\widehat X_{n+k|n}=E[X_{n+k}\mid X_{1:n}]\).
+\item Future innovations have conditional mean zero.
+\item Forecasts need prediction intervals; model/parameter/structural-break uncertainty makes usual intervals optimistic.
+\item Stationary ARMA forecasts converge to global mean; PI width converges to process variance.
+\item AR(1): \(\widehat X_{n+k|n}=m+\alpha^k(x_n-m)\).
+\item AR($p$): recursively replace unavailable future observations by previous forecasts.
+\item MA($q$): after horizon \(q\), forecast equals global mean.
+\item ARMA forecasting uses observed/predicted \(X_t\) and estimated/zero innovations.
+\item Forecast quality must be assessed out-of-sample, not with training fit.
+\item \(MAE\), \(RMSE\) for absolute scale; \(MAPE\) for relative scale and \(x_t\neq0\).
+\item Log back-transform: exp(point forecast) = median; mean requires variance correction.
+\item ARIMA forecasts differences and cumulatively integrates them.
+\item ARIMA without drift can fail on deterministic linear trends.
+\item ARMA PI width stabilizes; integrated-model PI width increases with horizon.
+\item SARIMA integrates ordinary + seasonal differenced forecasts.
+\item Decomposition forecasting = trend + seasonality + remainder forecasts.
+\item Trend extrapolation is usually the most uncertain component.
+\item SES: \(a_t=\alpha x_t+(1-\alpha)a_{t-1}\), forecast \(=a_n\).
+\item Large \(\alpha\): reactive/little smoothing; small \(\alpha\): smooth/long memory.
+\item Holt--Winters recursively updates level, slope and seasonality.
+\item ETS taxonomy = Error--Trend--Seasonality, additive/multiplicative/none.
+\item Multivariate cross-correlation theory requires stationary series.
+\item \(\rho_{12}(k)=Corr(X_{1,t+k},X_{2,t})\); inspect both signs of \(k\).
+\item Raw cross-correlation bounds are invalid when both series are autocorrelated.
+\item Prewhitening removes within-series dependence before cross-correlation analysis.
+\item Transfer function assumes one-way input \(\to\) output relation.
+\item For transfer-function estimation: whiten input and apply \emph{the same filter} to output.
+\item With White-Noise input, transfer coefficients are proportional to cross-correlations.
+\end{enumerate}
+
+\end{multicols}
+
+\begin{multicols}{2}
+\raggedcolumns
+
+% ============================================================
+\section{Spectral Analysis}
+
+Spectral analysis describes a stationary time series in the \key{frequency domain}. Instead of focusing on dependence across lags as with the ACF, it interprets the series as a superposition of cyclic/harmonic components and asks:
+\[
+\boxed{\text{which frequencies contribute most to the variability of the series?}}
+\]
+
+The observed \key{periodogram} describes frequencies present in one realization; the underlying stationary stochastic process has a continuous \key{spectrum/spectral density}. The spectrum and autocovariance contain the same information, but emphasize different aspects:
+\[
+\boxed{\text{ACF/autocovariance: lag dependence}\qquad
+\text{spectrum: periodicities/frequencies}.}
+\]
+
+% ============================================================
+\section{Harmonic Oscillations}
+
+A harmonic oscillation is
+\[
+\boxed{y(t)=a\cos(2\pi\nu t-\phi)},
+\]
+where \(a\) is amplitude, \(\nu\) frequency and \(\phi\) phase. Its period is
+\[
+\boxed{T=\frac1\nu}.
+\]
+
+Equivalent linear representation:
+\[
+\boxed{
+y(t)=\alpha\cos(2\pi\nu t)+
+\beta\sin(2\pi\nu t)
+}
+\]
+with
+\[
+\alpha=a\cos\phi,\qquad
+\beta=a\sin\phi.
+\]
+For fixed \(\nu\), estimating amplitude/phase therefore becomes a \key{linear regression problem} in \(\alpha,\beta\), instead of a nonlinear problem in \(a,\phi\).
+
+% ------------------------------------------------------------
+\subsection{Aliasing}
+
+With discrete observations, frequencies cannot be identified arbitrarily. If a frequency \(\nu\) produces given values at integer times, frequencies such as
+\[
+\nu+1,\ \nu+2,\ldots
+\]
+produce the same sampled observations. This is \key{aliasing}.
+
+Hence discrete observations cannot distinguish oscillations above the highest identifiable frequency:
+\[
+\boxed{\nu_{\max}=\frac12}.
+\]
+A harmonic cannot be identified if it oscillates more than once between two consecutive observations.
+
+% ============================================================
+\section{Superposition of Harmonics}
+
+Real stochastic series typically contain many cyclic components. Model:
+\[
+\boxed{
+X_t=
+\alpha_0+
+\sum_{k=1}^{m}
+\left[
+\alpha_k\cos(2\pi\nu_kt)
++
+\beta_k\sin(2\pi\nu_kt)
+\right]
++E_t,
+}
+\]
+where \(E_t\) is iid with mean zero.
+
+Choose the \key{Fourier frequencies}
+\[
+\boxed{
+\nu_k=\frac{k}{n},
+\qquad
+k=1,\ldots,\left\lfloor\frac n2\right\rfloor.
+}
+\]
+
+The resulting regression design is orthogonal; the estimated harmonic coefficients are uncorrelated, with
+\[
+\operatorname{Var}(\widehat\alpha_k)
+=
+\operatorname{Var}(\widehat\beta_k)
+=
+\frac{2\sigma_E^2}{n}.
+\]
+
+The complete Fourier decomposition is saturated: it uses enough harmonic parameters to reproduce all \(n\) observations, hence residuals are zero.
+
+If frequency \(\nu_k\) is removed, RSS increases by
+\[
+\boxed{
+\frac n2
+\left(
+\widehat\alpha_k^2+\widehat\beta_k^2
+\right).
+}
+\]
+Thus frequencies producing the largest increase in RSS are the most important; this motivates the periodogram.
+
+% ============================================================
+\section{The Periodogram}
+
+The \key{periodogram} measures the contribution of each Fourier frequency to variation in the observed series:
+\[
+\boxed{
+I_n(\nu_k)
+=
+\frac n4
+\left(
+\widehat\alpha_k^2+\widehat\beta_k^2
+\right)
+}
+\]
+or equivalently
+\[
+\boxed{
+I_n(\nu_k)=
+\frac1n
+\left[
+\left(
+\sum_{t=1}^{n}
+x_t\cos(2\pi\nu_kt)
+\right)^2
++
+\left(
+\sum_{t=1}^{n}
+x_t\sin(2\pi\nu_kt)
+\right)^2
+\right].
+}
+\]
+
+Plot
+\[
+I_n(\nu_k)\quad\text{vs.}\quad\nu_k.
+\]
+
+A large peak at frequency \(\nu\) indicates a strong cyclic component with period
+\[
+\boxed{T=\frac1\nu}.
+\]
+
+Since \(\nu_k=k/n\),
+\[
+\boxed{T_k=\frac nk}.
+\]
+Interpretation: a peak at index \(k\) means approximately \(k\) complete cycles occur in the \(n\) observations.
+
+Example: for \(n=114\), peaks around \(k=11,12\) imply
+\[
+T\approx114/11=10.36,\qquad
+T\approx114/12=9.50,
+\]
+hence an approximately 10-observation cycle. A secondary peak at \(k=3\) corresponds to
+\[
+T=114/3=38,
+\]
+i.e. a much longer cycle.
+
+% ============================================================
+\section{Leakage}
+
+The periodogram evaluates only Fourier frequencies
+\[
+\nu_k=\frac{k}{n}.
+\]
+If a true periodic component has a frequency that is \emph{not} one of these Fourier frequencies, its contribution cannot be assigned to one exact location.
+
+Instead, power is spread over neighboring frequencies:
+\[
+\boxed{\text{true frequency not Fourier frequency}\Rightarrow\text{leakage}.}
+\]
+
+Hence several nearby periodogram peaks may correspond to one underlying periodic component. The harmonic coefficients at the available Fourier frequencies then only approximate the true contribution.
+
+Leakage is especially relevant because the spectrum of ordinary stochastic processes such as ARMA is continuous rather than concentrated at a finite number of frequencies.
+
+% ============================================================
+\section{The Spectrum}
+
+The \key{spectrum} \(f(\nu)\) is a continuous function describing how the variance of a stationary process is distributed over frequencies. It contains the same information as the autocovariance function and can be mathematically obtained through its Fourier transform.
+
+Interpretation:
+\[
+\boxed{
+f(\nu)\text{ large}
+\Rightarrow
+\text{frequency }\nu\text{ contributes strongly to process variation}.
+}
+\]
+
+\key{White Noise:} spectral density is constant:
+\[
+\boxed{f(\nu)=\text{constant}.}
+\]
+Thus all frequencies contribute equally, which motivates the name ``white'' noise.
+
+\key{AR(1):} spectrum depends strongly on \(\alpha\). For positive \(\alpha\), spectral power is concentrated at low frequencies and decreases with \(\nu\); for negative \(\alpha\), it increases toward high frequencies.
+
+\key{AR($p$):} more complex spectra and multiple peaks are possible. To allow \(m\) maxima in the spectral density, an AR model requires at least order
+\[
+\boxed{p=2m}.
+\]
+Hence spectral peaks can also provide information about plausible AR order.
+
+% ============================================================
+\section{Periodogram as Spectrum Estimator}
+
+The raw periodogram looks like a natural estimator of \(f(\nu)\), but has a crucial problem.
+
+At different Fourier frequencies, periodogram values are asymptotically:
+\[
+\boxed{\text{unbiased and independent}}
+\]
+but they are
+\[
+\boxed{\text{inconsistent}.}
+\]
+
+Increasing \(n\) does \emph{not} make each individual periodogram ordinate increasingly precise. This is related to the saturated Fourier fit used to construct the periodogram.
+
+Therefore:
+\[
+\boxed{\text{raw periodogram = noisy/poor spectral estimator}.}
+\]
+
+However, adjacent periodogram ordinates are approximately independent and unbiased, while the true spectrum is smooth. Hence consistency can be obtained by \key{smoothing neighboring frequencies}.
+
+% ============================================================
+\section{Daniell Smoother}
+
+Simplest spectral smoother: running mean across neighboring periodogram values:
+\[
+\boxed{
+\widehat f(\nu_j)=
+\frac{1}{2L+1}
+\sum_{k=-L}^{L}
+I_n(\nu_{j+k}).
+}
+\]
+
+The associated bandwidth is
+\[
+\boxed{B=\frac{2L}{n}.}
+\]
+
+With appropriate bandwidth, the smoothed estimator is unbiased/approximately unbiased and consistent.
+
+Bias--variance/smoothing tradeoff:
+\[
+\boxed{
+L\text{ small}
+\Rightarrow
+\text{little smoothing, noisy estimate, narrow peaks},
+}
+\]
+\[
+\boxed{
+L\text{ large}
+\Rightarrow
+\text{strong smoothing, lower noise, excessively broad peaks}.
+}
+\]
+
+Thus \(L\) must be large enough to reduce periodogram noise but small enough to preserve spectral peaks.
+
+% ------------------------------------------------------------
+\subsection{Weighted Smoothing}
+
+Instead of equal weights, use a symmetric weighted moving average:
+\[
+\widehat f(\nu_j)
+\propto
+\sum_{k=-L}^{L}
+w_k I_n(\nu_{j+k}),
+\]
+with
+\[
+\boxed{
+w_{-k}=w_k,\qquad
+w_0\ge w_1\ge\cdots\ge w_L,
+}
+\]
+and normalized weights.
+
+More weight is assigned to frequencies close to \(\nu_j\). This generally gives smoother and more stable spectral estimates while retaining local frequency information.
+
+The \key{Daniell smoother} is such a weighted running mean.
+
+% ------------------------------------------------------------
+\subsection{Repeated/Double Smoothing}
+
+A smoother can be applied more than once. For example, two consecutive small-window smoothers may outperform one large-window smoother:
+\[
+\boxed{
+\text{small }L+\text{repeated smoothing}
+\Rightarrow
+\text{smooth estimate with relatively sharp peaks}.
+}
+\]
+
+This is useful because ARMA spectra generally have relatively narrow rather than extremely broad peaks.
+
+% ============================================================
+\section{Tapering}
+
+Another source of spectral distortion comes from observing only a finite segment of an infinitely long process. A finite sample acts as a \key{rectangular data window}: weight 1 inside the observed interval and 0 outside.
+
+The abrupt start/end creates leakage. \key{Tapering} reduces this by gradually shrinking observations near both endpoints toward zero:
+\[
+\boxed{\text{tapering}\Rightarrow\text{less boundary discontinuity}\Rightarrow\text{less leakage}.}
+\]
+
+The script recommends tapering approximately
+\[
+\boxed{10\%\text{ of observations at each end}.}
+\]
+
+Tapering may have only a small visible effect in some examples, but is generally recommended for spectral estimation.
+
+Before estimating a spectrum, a linear trend is also typically estimated and removed. Otherwise trend creates a strong low-frequency peak whose effect can spread to neighboring frequencies after smoothing.
+
+Thus a practical spectral estimate often combines:
+\[
+\boxed{
+\text{detrending}
++\text{tapering}
++\text{periodogram smoothing}.
+}
+\]
+
+% ============================================================
+\section{Model-Based Spectral Estimation}
+
+Instead of smoothing the periodogram, one can assume an AR($p$) model:
+\[
+X_t=\alpha_1X_{t-1}+\cdots+\alpha_pX_{t-p}+E_t,
+\]
+estimate
+\[
+\widehat\alpha_1,\ldots,\widehat\alpha_p,
+\widehat\sigma_E^2,
+\]
+and plug them into the theoretical AR spectrum:
+\[
+\boxed{
+\text{fit AR($p$)}
+\rightarrow
+\text{estimated parameters}
+\rightarrow
+\text{theoretical spectrum}.
+}
+\]
+
+Advantages:
+\begin{itemize}
+\item automatically produces a smooth spectral estimate;
+\item can be very accurate if the true process is AR and \(p\) is correctly chosen.
+\end{itemize}
+
+Disadvantages:
+\begin{itemize}
+\item model-order misspecification can distort the spectrum;
+\item the true process may not be AR;
+\item in those cases periodogram-based smoothing may be preferable.
+\end{itemize}
+
+Hence:
+\[
+\boxed{
+\text{model-based estimate relies on model correctness;}
+\quad
+\text{periodogram smoothing is more model-free}.
+}
+\]
+
+Comparing the spectral shape implied by candidate AR models with a smoothed periodogram can provide additional model-identification evidence.
+
+% ============================================================
+\section{Logarithmic Spectral Scale}
+
+Spectra are often displayed in \key{decibels (dB)} rather than linear scale. The logarithmic scale makes secondary, lower peaks easier to recognize when one dominant peak would otherwise hide them.
+
+Smoothed spectral estimates can also be accompanied by confidence intervals to assess whether apparent peaks are sufficiently pronounced to be interpreted.
+
+% ============================================================
+\section{Interpretation of Spectral Peaks}
+
+A spectral peak at \(\nu^\star\) implies a dominant stochastic cycle of approximate period
+\[
+\boxed{T^\star=\frac1{\nu^\star}}.
+\]
+
+Important:
+\[
+\boxed{\text{spectral peak}\neq\text{deterministic seasonality}.}
+\]
+It can reflect a stochastic cyclic component of a stationary process.
+
+Multiple spectral peaks indicate that the observed variation can be interpreted as a superposition of several cyclic components.
+
+Broader peaks imply frequency content spread over a region rather than concentrated at one exact periodicity.
+
+% ============================================================
+\section{Fault Detection Example}
+
+Spectral analysis can identify changes in mechanical vibration patterns. For a healthy electric motor, the spectrum contains:
+\[
+\boxed{\text{main peak at }50\text{ Hz}}
+\]
+with smaller side peaks around
+\[
+46\text{ Hz},\qquad54\text{ Hz}.
+\]
+
+A broken rotor bar increases the secondary peaks by approximately one order of magnitude. Thus:
+\[
+\boxed{
+\text{changes in spectral peak magnitudes}
+\Rightarrow
+\text{fault detection}.
+}
+\]
+
+This illustrates that spectral analysis can reveal changes that are much easier to detect in the frequency domain than directly in the time-series plot.
+
+% ============================================================
+\section{Compact Spectral Workflow}
+
+For a stationary series with possible stochastic cycles:
+\[
+\boxed{
+\begin{array}{c}
+\text{inspect time series}\\
+\downarrow\\
+\text{remove deterministic trend if necessary}\\
+\downarrow\\
+\text{compute periodogram}\\
+\downarrow\\
+\text{identify candidate frequency peaks}\\
+\downarrow\\
+T=1/\nu\\
+\downarrow\\
+\text{account for leakage/taper}\\
+\downarrow\\
+\text{smooth periodogram}\\
+\downarrow\\
+\text{interpret estimated spectrum}.
+\end{array}}
+\]
+
+Alternatively:
+\[
+\boxed{
+\text{fit AR($p$)}
+\rightarrow
+\text{derive model-based spectrum}
+\rightarrow
+\text{compare with smoothed periodogram}.
+}
+\]
+
+% ============================================================
+\section{Spectral Analysis: Exam Checklist}
+
+\begin{enumerate}
+\item Harmonic: \(a\cos(2\pi\nu t-\phi)\), with \(T=1/\nu\).
+\item Linear form: \(\alpha\cos(2\pi\nu t)+\beta\sin(2\pi\nu t)\).
+\item Aliasing prevents identification of frequencies above \(\nu=1/2\).
+\item Fourier frequencies: \(\nu_k=k/n,\ k=1,\ldots,\lfloor n/2\rfloor\).
+\item Fourier harmonic regression is orthogonal and saturated.
+\item Periodogram:
+\[
+I_n(\nu_k)=\frac n4(\widehat\alpha_k^2+\widehat\beta_k^2).
+\]
+\item Peak frequency \(\nu\Rightarrow\) cycle period \(T=1/\nu\).
+\item At Fourier index \(k\), \(T=n/k\).
+\item Leakage occurs when true frequency is not a Fourier frequency.
+\item Spectrum is continuous and contains the same information as autocovariance.
+\item White Noise has flat spectrum.
+\item AR(1) spectrum shape depends on sign/magnitude of \(\alpha\).
+\item \(m\) spectral maxima require AR order at least \(2m\).
+\item Raw periodogram ordinates are asymptotically unbiased/independent but inconsistent.
+\item Therefore spectrum estimation requires smoothing.
+\item Daniell smoother = local running mean across frequencies.
+\item Bandwidth \(B=2L/n\).
+\item Small \(L\): noisy/sharp; large \(L\): smooth/broad peaks.
+\item Repeated small-window smoothing can preserve sharper peaks.
+\item Tapering reduces leakage caused by abrupt sample boundaries.
+\item Recommended taper: roughly 10\% at each end.
+\item Remove trend before spectral estimation to avoid artificial low-frequency power.
+\item Model-based spectrum: fit AR($p$), then plug estimated parameters into theoretical spectrum.
+\item AR spectral estimation is excellent if model/order are correct, risky under misspecification.
+\item dB scale helps identify secondary peaks.
+\item Spectral peaks describe stochastic periodicity and do not imply deterministic seasonality.
+\end{enumerate}
+
+\end{multicols}
+
+\end{document}
+```
