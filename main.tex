@@ -1541,6 +1541,11 @@ A point forecast is \emph{not} the future realization but an estimate of its con
 \[
 \boxed{\widehat X_{n+k|n}=E[X_{n+k}\mid X_1,\ldots,X_n].}
 \]
+Its uncertainty is the conditional forecast variance
+\[
+v_{n+k|n}=\operatorname{Var}(X_{n+k}\mid X_{1:n}),
+\]
+which, under a Gaussian or approximate-Gaussian forecast distribution, gives the pointwise 95\% interval \(\widehat X_{n+k|n}\pm1.96\sqrt{v_{n+k|n}}\).
 Future innovations are unpredictable:
 \[
 \boxed{E[E_{n+k}\mid X_1,\ldots,X_n]=0,\quad k>0.}
@@ -1550,6 +1555,8 @@ Point forecasts should therefore be accompanied by \key{prediction intervals}, d
 Ordinary forecast intervals are \key{pointwise}: a 95\% interval has 95\% coverage at each specified horizon separately. It is not a 95\% simultaneous band for the entire future path; joint coverage across all horizons is lower unless a simultaneous procedure is constructed.
 
 Forecasts are generally more reliable when signal/noise is high and for short horizons. Increasing horizon usually means less dependence on current observations and larger uncertainty.
+
+Pure time-series forecasts use the past of the modeled series. External predictors can be incorporated only if their future values are known or forecast too; otherwise the result is better treated as a baseline for scenarios or transparent expert adjustment.
 
 % ============================================================
 \section{Forecasting Stationary Series}
@@ -1808,7 +1815,9 @@ The AR part makes forecasts depend strongly on recent observations; the invertib
 
 For
 \[
-ARIMA(p,1,q), \qquad Y_t=(1-B)X_t=X_t-X_{t-1},
+ARIMA(p,1,q),
+\qquad
+Y_t=(1-B)X_t=X_t-X_{t-1},
 \]
 \(Y_t\) is stationary ARMA($p,q$), so first forecast the differences
 \[
@@ -1816,18 +1825,28 @@ ARIMA(p,1,q), \qquad Y_t=(1-B)X_t=X_t-X_{t-1},
 \]
 Then integrate:
 \[
-\widehat X_{n+1|n}=x_n+\widehat Y_{n+1|n}, \qquad
-\widehat X_{n+2|n}=x_n+\widehat Y_{n+1|n}+\widehat Y_{n+2|n},
+\widehat X_{n+1|n}
+=x_n+\widehat Y_{n+1|n},
+\]
+\[
+\widehat X_{n+2|n}
+=x_n+\widehat Y_{n+1|n}
++\widehat Y_{n+2|n},
 \]
 and generally
 \[
-\boxed{\widehat X_{n+k|n}=x_n+\sum_{j=1}^{k}\widehat Y_{n+j|n}.}
+\boxed{
+\widehat X_{n+k|n}
+=
+x_n+
+\sum_{j=1}^{k}\widehat Y_{n+j|n}.
+}
 \]
 
-For an ordinary ARIMA\((p,1,q)\) without drift, \(\widehat Y_{n+k|n}\to0\), so the forecasts \(\widehat X_{n+k|n}\) eventually approach a \key{constant}. This differs critically from stationary ARMA only in uncertainty:
+For an ordinary ARIMA\((p,1,q)\) without drift, forecasts eventually approach a \key{constant}. This differs critically from stationary ARMA only in uncertainty:
 \[
 \boxed{\text{ARMA PI width }\to\text{constant},\qquad
-\text{ARIMA PI width increases indefinitely (typically as }O(\sqrt{k})\text{)}.}
+\text{ARIMA PI width increases indefinitely}.}
 \]
 Integration accumulates future innovation uncertainty.
 
@@ -1840,17 +1859,21 @@ E[\Delta X_t]=\delta\neq0,
 \]
 then
 \[
-\boxed{\Delta X_t=\delta+\text{stationary zero-mean ARMA component}}
+\boxed{\Delta X_t=\delta+\text{stationary ARMA component}}
 \]
-and the original series contains a \key{drift}. Since \(\widehat{\Delta X}_{n+k|n}\to\delta\), its forecast is asymptotically linear:
+and the original series contains a \key{drift}. Its forecast contains approximately
 \[
-\boxed{\widehat X_{n+k|n}=C_n+k\delta+o(1),}
+x_n+k\delta,
 \]
-approximately \(x_n+k\delta\), while its prediction interval still increases indefinitely.
+allowing continuation of a linear trend.
 
-However, prediction intervals may fail to account adequately for uncertainty in the estimated drift: the error \(k(\widehat\delta-\delta)\) grows with the horizon. Hence
+However, prediction intervals may still fail to account adequately for uncertainty in the estimated drift/trend:
 \[
-\boxed{\text{forecast intervals may be optimistic lower bounds on true extrapolation uncertainty}.}
+\boxed{\begin{array}{c}
+\text{forecast intervals may omit uncertainty}\\
+\text{from estimated drift/trend}\\
+\Rightarrow\text{optimistic extrapolation intervals}
+\end{array}}
 \]
 
 % ============================================================
@@ -1963,10 +1986,9 @@ where \(a_t\) is the estimated current \key{level}. All future forecasts are
 
 Repeated substitution gives
 \[
-a_t=
-\alpha x_t+\alpha(1-\alpha)x_{t-1}
-+\alpha(1-\alpha)^2x_{t-2}+\cdots.
+a_t=\sum_{i=0}^{t-1}\alpha(1-\alpha)^i x_{t-i}+(1-\alpha)^t a_0.
 \]
+Thus the initial level receives a geometrically vanishing weight; for a long series this yields the usual approximate infinite weighted average.
 
 Interpretation:
 \[
@@ -2084,11 +2106,13 @@ ETS(M,A,M)
 The method:
 \[
 \boxed{
-\text{fit candidate state-space models by MLE}
-\rightarrow
-\text{compare AIC/AICc/BIC}
-\rightarrow
-\text{forecast selected model}.
+\begin{array}{c}
+\text{fit candidate state-space models by MLE}\\
+\downarrow\\
+\text{compare AIC/AICc/BIC}\\
+\downarrow\\
+\text{forecast selected model}
+\end{array}
 }
 \]
 
@@ -2099,14 +2123,14 @@ Advantages: very flexible and automatic; handles stationary, trending and season
 
 \[
 \boxed{
-\begin{array}{c|c|c}
-\text{Model} & \text{Long-run point forecast} & \text{PI width}\\ \hline
-ARMA & \text{global mean} & \to\text{constant}\\
-ARIMA(d=1) & \text{constant unless drift} & \uparrow\text{ indefinitely}\\
-ARIMA+drift & \text{linear extrapolation} & \text{may understate trend uncertainty}\\
-SARIMA & \text{trend/season extrapolation} & \uparrow\text{ with horizon}\\
-SES & \text{current smoothed level} & \text{model dependent}\\
-Holt--Winters & \text{level+trend+season} & \text{model dependent}
+\begin{array}{c|c}
+\text{Model} & \text{long-horizon behavior}\\ \hline
+ARMA & \widehat X\to m,\quad \text{PI width}\to\text{constant}\\
+ARIMA(d=1) & \widehat X\to\text{constant without drift},\quad\text{PI}\uparrow\infty\\
+ARIMA+\text{drift} & \widehat X\text{ linear};\ \text{drift uncertainty may be omitted}\\
+SARIMA & \text{trend/season extrapolated},\quad\text{PI}\uparrow\\
+SES & \widehat X\to\text{smoothed level}\\
+\text{Holt--Winters} & \widehat X=\text{level+trend+season}
 \end{array}}
 \]
 
@@ -2122,9 +2146,9 @@ Consider two stationary processes
 \[
 X_{1,t},\qquad X_{2,t}.
 \]
-Multivariate analysis studies their within-series and cross-series dependence. All theory here assumes both series are stationary; if necessary, transform/difference first.
+Multivariate analysis studies their within-series and cross-series dependence with the series initially on \key{equal footing}. This differs from time-series regression, which designates response and explanatory variables and posits a directional relation. All theory here assumes stationary series; if necessary, transform/difference first.
 
-The scientific question is often whether changes in one series precede and explain changes in another, and with what delay.
+The scientific question is often whether changes in one series are associated with earlier/later changes in another, and with what delay. Cross-correlation alone establishes temporal linear association, not causality.
 
 % ============================================================
 \section{Cross Covariance and Cross Correlation}
@@ -2280,13 +2304,18 @@ V_t=\sum_{i=0}^{\infty}b_iX_{2,t-i},
 \]
 such that \(U_t,V_t\) are approximately White Noise. In practice these are the \key{residuals/innovations from fitted ARMA models}.
 
-Because prewhitened series have negligible autocorrelation, ordinary cross-correlation confidence bounds become meaningful.
+Under the null of no cross-dependence, prewhitened series have negligible autocorrelation, so the ordinary \(\pm2/\sqrt n\) cross-correlation bounds become approximately valid. Whitening removes within-series dependence; it does \emph{not} remove genuine cross-dependence.
 
-If
+The filtered and original cross-covariances satisfy
 \[
-\rho_{UV}(k)=0\quad\forall k,
+\gamma_{UV}(k)=\sum_{i=0}^{\infty}\sum_{j=0}^{\infty}a_i b_j\,
+\gamma_{12}(k+i-j).
 \]
-then the original processes show no linear cross-dependence either.
+For invertible filters this implies
+\[
+\boxed{\rho_{UV}(k)=0\ \forall k\quad\Longleftrightarrow\quad
+\rho_{12}(k)=0\ \forall k.}
+\]
 
 Practical cross-correlation workflow:
 \[
@@ -2306,7 +2335,10 @@ U_t,V_t=\text{residuals}\\
 
 Thus:
 \[
-\boxed{\text{never interpret a raw cross-correlogram blindly when series are autocorrelated}.}
+\boxed{\begin{array}{c}
+\text{never interpret a raw cross-correlogram}\\
+\text{when the series are autocorrelated}
+\end{array}}
 \]
 
 % ============================================================
@@ -2458,24 +2490,43 @@ The estimator is not fully statistically efficient because filtered output and t
 \boxed{
 \begin{array}{c|c}
 \text{Cross-correlation} & \text{Transfer function}\\ \hline
-\text{detects linear association} &
-\text{models directional influence}\\
-\text{uses positive/negative lags} &
-\text{uses causal lags }j\ge0\\
-\text{requires prewhitening for valid inference} &
-\text{whiten input and apply same filter to output}\\
-\text{magnitude mixed by input autocorrelation} &
-\nu_j\text{ gives interpretable lag effect}
+\text{linear association} & \text{directional model}\\
+\text{positive/negative lags} & \text{causal lags }j\ge0\\
+\text{prewhiten both series} & \text{input filter also on output}\\
+\text{raw magnitude is mixed} & \nu_j=\text{lag effect}
 \end{array}}
 \]
 
 A significant prewhitened cross-correlation suggests a delayed relation; the transfer-function model then quantifies that relation.
 
 % ============================================================
+\section{Vector Autoregressions (VAR)}
+
+Use a VAR when several series influence one another and no one-way input--output structure is defensible. For \(K\) series collected in \(Y_t\in\mathbb R^K\), a VAR(\(p\)) is
+\[
+\boxed{Y_t=c+\Phi_1Y_{t-1}+\cdots+\Phi_pY_{t-p}+E_t.}
+\]
+It contains one regression equation per component. The vector innovations \(E_t\) are serially uncorrelated with mean zero, but their contemporaneous covariance matrix \(\Sigma_E\) need not be diagonal: shocks to different series may occur together.
+
+A VAR must be fitted to stationary series: use a \key{VAR in levels} when levels are stationary and a \key{VAR in differences} after suitable differencing otherwise. With an intercept, the system contains \(K+pK^2\) coefficients, so order growth is costly. Select \(p\) using AIC, HQ, BIC/SC or FPE; BIC is often preferred for a parsimonious model.
+
+Model adequacy requires the residual vector to be multivariate White Noise. Inspect residual auto- and cross-correlations and use a multivariate Portmanteau test; a large p-value means failure to reject residual serial independence, not proof that the model is correct.
+
+Forecast recursively:
+\[
+\boxed{\widehat Y_{n+h|n}=c+\sum_{j=1}^{p}\Phi_j
+\widetilde Y_{n+h-j},\qquad
+\widetilde Y_t=Y_t\ (t\le n),\quad
+\widetilde Y_t=\widehat Y_{t|n}\ (t>n).}
+\]
+Thus forecasts of all components are produced jointly and each may use lagged values of every series.
+
+% ============================================================
 \section{Compact Exam Checklist}
 
 \begin{enumerate}
 \item MMSE forecast: \(\widehat X_{n+k|n}=E[X_{n+k}\mid X_{1:n}]\).
+\item Forecast uncertainty: \(v_{n+k|n}=\operatorname{Var}(X_{n+k}\mid X_{1:n})\); Gaussian 95\% PI is forecast \(\pm1.96\sqrt v\).
 \item Future innovations have conditional mean zero.
 \item Forecasts need prediction intervals; model/parameter/structural-break uncertainty makes usual intervals optimistic.
 \item Stationary ARMA forecasts converge to global mean; PI width converges to process variance.
@@ -2503,6 +2554,8 @@ A significant prewhitened cross-correlation suggests a delayed relation; the tra
 \item Transfer function assumes one-way input \(\to\) output relation.
 \item For transfer-function estimation: whiten input and apply \emph{the same filter} to output.
 \item With White-Noise input, transfer coefficients are proportional to cross-correlations.
+\item VAR models reciprocal multivariate dynamics: \(Y_t=c+\sum_{j=1}^p\Phi_jY_{t-j}+E_t\).
+\item VAR requires stationary inputs; select lag order parsimoniously and check residual auto- and cross-correlation.
 \end{enumerate}
 
 \end{multicols}
