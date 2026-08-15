@@ -2219,11 +2219,17 @@ Raw cross-correlograms are difficult to interpret because \key{within-series aut
 \]
 are generally \key{wrong} for autocorrelated series.
 
-If cross-correlations vanish for sufficiently large lags,
+\textbf{Case 1: no correlation between the two series for large lags.} If
+\(\rho_{12}(j)=0\) for \(|j|\ge m\), then for \(|k|\ge m\),
 \[
+\boxed{
 \operatorname{Var}(\widehat\rho_{12}(k))
+\approx\frac1n\sum_{j=-\infty}^{\infty}
+\left\{\rho_{11}(j)\rho_{22}(j)+
+\rho_{12}(j+k)\rho_{12}(j-k)\right\}.
+}
 \]
-still depends on all auto- and cross-correlations of both processes.
+The variance still depends on all auto- and cross-correlations of both processes.
 
 If the two processes are independent,
 \[
