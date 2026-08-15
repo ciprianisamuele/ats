@@ -2577,6 +2577,12 @@ Hence discrete observations cannot distinguish oscillations above the highest id
 \]
 A harmonic cannot be identified if it oscillates more than once between two consecutive observations.
 
+Here \(\nu\) is measured in cycles per observation. With sampling interval \(\Delta t\), physical frequency and Nyquist frequency are
+\[
+\boxed{f=\nu/\Delta t,\qquad f_N=1/(2\Delta t)},
+\]
+and the physical period is \(T=\Delta t/\nu=1/f\). Frequencies differing by integer multiples of \(1/\Delta t\) are aliases.
+
 % ============================================================
 \section{Superposition of Harmonics}
 
@@ -2710,6 +2716,13 @@ Leakage is especially relevant because the spectrum of ordinary stochastic proce
 
 The \key{spectrum} \(f(\nu)\) is a continuous function describing how the variance of a stationary process is distributed over frequencies. It contains the same information as the autocovariance function and can be mathematically obtained through its Fourier transform.
 
+More precisely, spectrum and autocovariance form a Fourier pair:
+\[
+\boxed{f(\nu)=\sum_{h=-\infty}^{\infty}\gamma(h)e^{-2\pi i\nu h},\qquad
+\gamma(h)=\int_{-1/2}^{1/2}f(\nu)e^{2\pi i\nu h}\,d\nu.}
+\]
+For a real-valued process, \(f(\nu)\) is real, non-negative and even. In particular, \(\gamma(0)=\int_{-1/2}^{1/2}f(\nu)d\nu\), so total spectral power equals process variance.
+
 Interpretation:
 \[
 \boxed{
@@ -2732,6 +2745,13 @@ Thus all frequencies contribute equally, which motivates the name ``white'' nois
 \boxed{p=2m}.
 \]
 Hence spectral peaks can also provide information about plausible AR order.
+
+For a causal/invertible ARMA model \(\Phi(B)X_t=\Theta(B)E_t\), its spectral shape is
+\[
+\boxed{f(\nu)\propto\sigma_E^2
+\frac{|\Theta(e^{-2\pi i\nu})|^2}{|\Phi(e^{-2\pi i\nu})|^2},}
+\]
+with the proportionality constant depending only on the spectral normalization convention.
 
 % ============================================================
 \section{Periodogram as Spectrum Estimator}
@@ -2898,9 +2918,10 @@ Disadvantages:
 Hence:
 \[
 \boxed{
-\text{model-based estimate relies on model correctness;}
-\quad
+\begin{array}{c}
+\text{model-based estimate relies on model correctness;}\\
 \text{periodogram smoothing is more model-free}.
+\end{array}
 }
 \]
 
@@ -2982,11 +3003,10 @@ T=1/\nu\\
 Alternatively:
 \[
 \boxed{
-\text{fit AR($p$)}
-\rightarrow
-\text{derive model-based spectrum}
-\rightarrow
-\text{compare with smoothed periodogram}.
+\begin{array}{c}
+\text{fit AR($p$)}\rightarrow\text{derive model-based spectrum}\\
+\rightarrow\text{compare with smoothed periodogram}.
+\end{array}
 }
 \]
 
@@ -2996,7 +3016,7 @@ Alternatively:
 \begin{enumerate}
 \item Harmonic: \(a\cos(2\pi\nu t-\phi)\), with \(T=1/\nu\).
 \item Linear form: \(\alpha\cos(2\pi\nu t)+\beta\sin(2\pi\nu t)\).
-\item Aliasing prevents identification of frequencies above \(\nu=1/2\).
+\item Aliasing prevents identification above \(\nu=1/2\); physically \(f_N=1/(2\Delta t)\).
 \item Fourier frequencies: \(\nu_k=k/n,\ k=1,\ldots,\lfloor n/2\rfloor\).
 \item Fourier harmonic regression is orthogonal and saturated.
 \item Periodogram:
@@ -3006,9 +3026,10 @@ I_n(\nu_k)=\frac n4(\widehat\alpha_k^2+\widehat\beta_k^2).
 \item Peak frequency \(\nu\Rightarrow\) cycle period \(T=1/\nu\).
 \item At Fourier index \(k\), \(T=n/k\).
 \item Leakage occurs when true frequency is not a Fourier frequency.
-\item Spectrum is continuous and contains the same information as autocovariance.
+\item Spectrum and autocovariance are a Fourier pair; total power \(\int f=\gamma(0)\).
 \item White Noise has flat spectrum.
 \item AR(1) spectrum shape depends on sign/magnitude of \(\alpha\).
+\item ARMA spectral shape is \(f(\nu)\propto\sigma_E^2|\Theta(e^{-2\pi i\nu})|^2/|\Phi(e^{-2\pi i\nu})|^2\).
 \item \(m\) spectral maxima require AR order at least \(2m\).
 \item Raw periodogram ordinates are asymptotically unbiased/independent but inconsistent.
 \item Therefore spectrum estimation requires smoothing.
@@ -3028,13 +3049,54 @@ I_n(\nu_k)=\frac n4(\widehat\alpha_k^2+\widehat\beta_k^2).
 % ============================================================
 \section{Time Series Classification}
 
-\key{Time-series classification (TSC)} assigns one categorical label to an entire time-series segment, not to each individual time point.
+\key{Goal.} Time-series classification (TSC) assigns one categorical label to an \emph{entire segment}, not to each time point. A supervised dataset is \(\{(X_i,Y_i)\}_{i=1}^N\), where a possibly multichannel window \(X_i\in\mathbb R^{d\times n}\) has class \(Y_i\in\{1,\ldots,C\}\). The classifier may output class probabilities \(\widehat p_c(X_i)\), with \(\widehat Y_i=\arg\max_c\widehat p_c(X_i)\).
 
-\key{\(k\)-nearest neighbors:} standard \(k\)NN commonly uses Euclidean distance, comparing equally indexed observations point by point. It is therefore sensitive to phase shifts, different speeds and other temporal misalignment.
+\key{Windowing.} First choose one or more relevant window lengths; a long stream is split into fixed-length, possibly overlapping segments. Each window receives one label. Larger windows provide more temporal context but fewer training examples and may mix multiple events; shorter windows improve localization but may miss long-range structure. With overlapping windows, random window-level splitting causes leakage because neighboring segments share observations: split by independent unit (e.g. subject, machine, game) whenever possible.
 
-\key{Dynamic Time Warping (DTW)} nonlinearly warps the time axis, subject to an ordered alignment path, to match similar shapes occurring at different speeds or offsets. Using DTW distance in \(k\)NN often improves classification over Euclidean distance when misalignment is present, although improvement is not guaranteed for every dataset.
+\subsection{Nearest Neighbors and DTW}
 
-\key{Deep learning:} architectures such as CNNs and RNNs can learn representations directly from raw sequences; prior manual feature extraction is not required.
+\key{Euclidean \(k\)NN:} flatten each \(d\times n\) window, find the \(k\) training windows with smallest Euclidean distance and predict their majority class. It is simple, but treats equally indexed values as aligned, focuses strongly on level/amplitude and poorly handles time shifts, different speeds or lengths.
+
+\key{Dynamic Time Warping (DTW)} aligns two sequences nonlinearly before measuring dissimilarity. With local cost \(d(x_i,z_j)\), cumulative cost satisfies
+\[
+\boxed{D(i,j)=d(x_i,z_j)+\min\{D(i-1,j),D(i,j-1),D(i-1,j-1)\}.}
+\]
+The optimal monotone warping path allows one point to match several points while preserving time order; \(D(n,m)\) is then used as the distance in \(k\)NN. DTW is useful for temporal misalignment, speed/timing differences and unequal lengths, but is computationally heavier; normalization may still be needed for level/amplitude differences.
+
+\subsection{Feature-Based Machine Learning}
+
+For each window, convert the sequence into a fixed feature vector and fit an ordinary classifier such as Random Forest or SVM. Useful features, computed on the original and possibly differenced, filtered or detrended signal, include:
+\begin{itemize}
+\item mean, variance, skewness, kurtosis and normality measures;
+\item ACF values or sums of squared ACF coefficients over selected lags;
+\item AR order selected by AIC, AR coefficients, innovation variance and extreme residuals;
+\item trend slope, trend \(R^2\), residual trend error and measures of trend importance;
+\item frequency-domain features such as dominant spectral frequencies/powers.
+\end{itemize}
+Several window lengths can be used in parallel. Feature engineering injects domain knowledge and works with smaller datasets, but depends on choosing informative, robust features; non-stationarity may require differencing/detrending or features designed to capture it.
+
+\subsection{Deep Learning for TSC}
+
+Deep networks can receive raw multichannel windows and learn representations automatically, so manual feature extraction is not required:
+\begin{itemize}
+\item \key{RNN/LSTM}: recurrent state models temporal dynamics; LSTM gates help retain long-term dependencies.
+\item \key{1D-CNN}: convolution filters slide over time; stacked/dilated layers enlarge the receptive field and learn local-to-long-range patterns for fixed-length sequences.
+\item \key{2D-CNN}: first transform signals into time--frequency images (e.g. spectrograms), then apply image-style convolutions.
+\end{itemize}
+The last layer produces a probability vector over classes. No architecture is universally best: in the football example, convolutional models generalized better than LSTMs, but this is an empirical result rather than a general theorem.
+
+\subsection{Evaluation and Practical Issues}
+
+Use a confusion matrix and class-specific precision/recall, not accuracy alone. Strong class imbalance (e.g. many more ``no action'' windows) can create many false positives/negatives; class-weighted loss or balanced sampling can help. Label noise and ambiguous/mislabeled events impose an upper limit on attainable performance. Always assess generalization on genuinely independent sequences and check adaptivity when the data-generating mechanism changes.
+
+\[
+\boxed{\begin{array}{c}
+\text{segment}\rightarrow\text{Euclidean/DTW}\rightarrow k\text{NN}\\
+\text{segment}\rightarrow\text{features}\rightarrow\text{RF/SVM}\\
+\text{segment}\rightarrow\text{raw/spectrogram}\rightarrow\text{CNN/RNN}\\
+\hfill\rightarrow\text{class probabilities}
+\end{array}}
+\]
 
 \end{multicols}
 
