@@ -1808,9 +1808,7 @@ The AR part makes forecasts depend strongly on recent observations; the invertib
 
 For
 \[
-ARIMA(p,1,q),
-\qquad
-Y_t=(1-B)X_t=X_t-X_{t-1},
+ARIMA(p,1,q), \qquad Y_t=(1-B)X_t=X_t-X_{t-1},
 \]
 \(Y_t\) is stationary ARMA($p,q$), so first forecast the differences
 \[
@@ -1818,28 +1816,18 @@ Y_t=(1-B)X_t=X_t-X_{t-1},
 \]
 Then integrate:
 \[
-\widehat X_{n+1|n}
-=x_n+\widehat Y_{n+1|n},
-\]
-\[
-\widehat X_{n+2|n}
-=x_n+\widehat Y_{n+1|n}
-+\widehat Y_{n+2|n},
+\widehat X_{n+1|n}=x_n+\widehat Y_{n+1|n}, \qquad
+\widehat X_{n+2|n}=x_n+\widehat Y_{n+1|n}+\widehat Y_{n+2|n},
 \]
 and generally
 \[
-\boxed{
-\widehat X_{n+k|n}
-=
-x_n+
-\sum_{j=1}^{k}\widehat Y_{n+j|n}.
-}
+\boxed{\widehat X_{n+k|n}=x_n+\sum_{j=1}^{k}\widehat Y_{n+j|n}.}
 \]
 
-For an ordinary ARIMA\((p,1,q)\) without drift, forecasts eventually approach a \key{constant}. This differs critically from stationary ARMA only in uncertainty:
+For an ordinary ARIMA\((p,1,q)\) without drift, \(\widehat Y_{n+k|n}\to0\), so the forecasts \(\widehat X_{n+k|n}\) eventually approach a \key{constant}. This differs critically from stationary ARMA only in uncertainty:
 \[
 \boxed{\text{ARMA PI width }\to\text{constant},\qquad
-\text{ARIMA PI width increases indefinitely}.}
+\text{ARIMA PI width increases indefinitely (typically as }O(\sqrt{k})\text{)}.}
 \]
 Integration accumulates future innovation uncertainty.
 
@@ -1852,17 +1840,17 @@ E[\Delta X_t]=\delta\neq0,
 \]
 then
 \[
-\boxed{\Delta X_t=\delta+\text{stationary ARMA component}}
+\boxed{\Delta X_t=\delta+\text{stationary zero-mean ARMA component}}
 \]
-and the original series contains a \key{drift}. Its forecast contains approximately
+and the original series contains a \key{drift}. Since \(\widehat{\Delta X}_{n+k|n}\to\delta\), its forecast is asymptotically linear:
 \[
-x_n+k\delta,
+\boxed{\widehat X_{n+k|n}=C_n+k\delta+o(1),}
 \]
-allowing continuation of a linear trend.
+approximately \(x_n+k\delta\), while its prediction interval still increases indefinitely.
 
-However, prediction intervals may still fail to account adequately for uncertainty in the estimated drift/trend:
+However, prediction intervals may fail to account adequately for uncertainty in the estimated drift: the error \(k(\widehat\delta-\delta)\) grows with the horizon. Hence
 \[
-\boxed{\text{forecast intervals are optimistic lower bounds on true extrapolation uncertainty}.}
+\boxed{\text{forecast intervals may be optimistic lower bounds on true extrapolation uncertainty}.}
 \]
 
 % ============================================================
