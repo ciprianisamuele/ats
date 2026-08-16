@@ -56,7 +56,7 @@ A \key{time series} is a sequence of observations recorded sequentially in time.
 
 Main goals: exploratory analysis and visualization; decomposition into deterministic and stochastic components; modeling of serial dependence; forecasting; time-series regression; process control/anomaly detection; classification and clustering.
 
-Three important structures are trend, seasonality andstochastic serial dependence.
+Three important structures are trend, seasonality and stochastic serial dependence.
 
 \key{Trend:} systematic long-term change in the mean level, \(E[X_t]=m_t\), where \(m_t\) varies with time and is not periodic.
 
@@ -73,7 +73,7 @@ The process is strictly stationary if, for every \(k\), every \(t_1,\ldots,t_k\)
 \[
 (X_{t_1},\ldots,X_{t_k})\overset d=(X_{t_1+h},\ldots,X_{t_k+h}).
 \]
-Hence all finite-dimensional distributions are invariant under time shifts. In particular, \(E[X_t]=\mu\), \(\operatorname{Var}(X_t)=\sigma^2\), and \(\operatorname{Cov}(X_t,X_{t+h})=\gamma(h)\), so covariance depends only on the \key{lag} \(h\).
+Hence all finite-dimensional distributions are invariant under time shifts. Whenever the corresponding moments exist, in particular \(E[X_t]=\mu\), \(\operatorname{Var}(X_t)=\sigma^2\), and \(\operatorname{Cov}(X_t,X_{t+h})=\gamma(h)\), so covariance depends only on the \key{lag} \(h\).
 
 Stationarity does \key{not} imply independence: \(\gamma(h)\neq0\) is allowed. Also \(E[X_t\mid X_{t-1},X_{t-2},\ldots]\) can depend on the past even if \(E[X_t]=\mu\) is constant.
 
@@ -88,7 +88,7 @@ Thus mean and variance are constant and the dependence structure depends only on
 
 Weak stationarity together with \key{ergodicity} is sufficient for most practical statistical learning and forecasting tasks. Ergodicity informally means that time averages converge to the corresponding expectations.
 
-\key{Assessing stationarity.} Stationarity cannot be proven from a single realization; it is treated as a working hypothesis. Typical violations: trend, changing variance, deterministic seasonality, structural breaks.
+\key{Assessing stationarity.} Stationarity cannot be proven from a single realization; it is treated as a working hypothesis. Typical violations: trend, changing variance, deterministic seasonality, structural breaks or a dependence structure that changes over time. A useful diagnostic is to split a long series into consecutive segments and compare their plots and correlograms.
 
 Useful practical criterion: \textit{Could a segment of the series be moved elsewhere in time without looking unusual?} If yes, stationarity is plausible.
 
@@ -99,7 +99,7 @@ Frequency is the number of observations per natural time unit: \(f=1\) yearly, \
 
 In R, \texttt{deltat} is the spacing between consecutive observations and \(\texttt{frequency}=1/\texttt{deltat}\). Thus \(\texttt{deltat}=7/365\) means weekly observations and frequency \(365/7\) per year, not yearly data.
 
-A visible stochastic cycle does \key{not} imply that its period should be used as frequency. For high-frequency data, multiple seasonalities may coexist, e.g. daily + weekly + yearly.
+A visible stochastic cycle does \key{not} imply that its period should be used as frequency. Frequency must be chosen using domain knowledge. If the \texttt{ts} class can store only one of several plausible cycles, use the strongest or most relevant one; irregular annual counts may be represented by a sensible integer (e.g. 252 trading days) or an average, possibly non-integer, frequency. For high-frequency data, multiple seasonalities may coexist, e.g. daily + weekly + yearly.
 
 % ============================================================
 \section{Descriptive Analysis}
@@ -113,6 +113,8 @@ Useful workflow:
 Inspect the time-series plot for trend, seasonality, changing variability, outliers, structural breaks and possible serial dependence.
 
 For multiple series with different scales, either use separate panels or standardize/index them before comparison. For seasonal series, using only the first observation as reference can be misleading; using the average over the first full period is often preferable.
+
+\key{Seasonal displays.} A season plot overlays successive cycles against the within-cycle position, making the seasonal shape and its evolution visible. A subseries/month plot instead groups all observations from the same season across years and usually marks their season-specific mean; it is especially useful for comparing the strength and stability of different seasonal effects.
 
 % ============================================================
 \section{Transformations}
@@ -222,13 +224,15 @@ After trend estimation, \(X_t-\widehat m_t\) is trend-adjusted. Seasonal effect 
 \]
 Finally \(\boxed{\widehat R_t=X_t-\widehat m_t-\widehat s_t}\). Limitation: classical seasonal averaging assumes constant seasonal pattern over time.
 
+The estimated seasonal effects are conventionally centered to have mean (and hence sum over one cycle) zero, so the overall level remains in the trend. Classical \texttt{decompose()} also requires at least two complete seasonal cycles.
+
 \subsection{LOESS}
 
 LOESS estimates trend through \key{local weighted regressions}. Compared with moving averages it gives a smoother trend, estimates near boundaries and local weighting reduces the influence of disturbing observations/outliers. The script recommends LOESS over simple moving averages for trend estimation.
 
 \subsection{STL}
 
-STL = \key{Seasonal-Trend decomposition using LOESS}; it decomposes \(X_t=\text{trend}+\text{seasonal}+\text{remainder}\). Both trend and seasonality are obtained by smoothing.
+STL = \key{Seasonal-Trend decomposition using LOESS}; it decomposes \(X_t=\text{trend}+\text{seasonal}+\text{remainder}\). Both trend and seasonality are obtained by smoothing. Unlike centered moving-average decomposition, STL returns components with the same length as the original series; however, because it is model-free, extrapolating its smooth trend and seasonal components is not automatic.
 
 In R, \texttt{decompose()} uses classical moving-average filtering for the trend, whereas \texttt{stl()} uses LOESS. \texttt{stl()} reads the cycle length from the \texttt{frequency} attribute of the \texttt{ts} object: it requires \(\texttt{frequency}>1\), but not specifically 12. With \texttt{s.window="periodic"}, STL estimates one fixed seasonal pattern across cycles (equivalently, season-specific averages after detrending).
 
@@ -253,11 +257,11 @@ Here \(\beta_0+\beta_1t\) is linear trend; sine/cosine give cyclic seasonality; 
 
 Advantages: parsimonious, few degrees of freedom, formal inference on trend/seasonality. However, if \(R_t\) is serially correlated, standard regression inference is not valid: coefficient estimates can remain unbiased, but standard errors and derived \(p\)-values may be wrong.
 
-More flexible model:
+Robust regression can reduce the influence of outliers in a parametric decomposition. More flexible model:
 \[
 X_t=f(t)+\alpha_{\text{season}(t)}+R_t,
 \]
-with smooth trend \(f(t)\) and seasonal dummy effects. Very high-order polynomial trends should be avoided because of poor boundary behavior.
+with smooth trend \(f(t)\) and seasonal dummy effects. For GAM-type trends, smoothness/effective degrees of freedom should be selected from the data, commonly by cross-validation. Very high-order polynomial trends should be avoided because of poor boundary behavior.
 
 % ============================================================
 \section{Autocorrelation}
@@ -268,6 +272,8 @@ For a stationary process:
 \qquad \rho(0)=1.
 \]
 ACF measures \key{linear serial dependence} at lag \(k\).
+
+In the simple linear regression of \(X_t\) on \(X_{t-k}\) alone, \(\rho(k)^2\) is the fraction of variance explained by that linear association. This interpretation is conditional on the simple linear setting: it does not measure nonlinear dependence or the additional predictive contribution after other lags are included.
 
 \subsection{Lagged Scatterplots}
 
@@ -474,6 +480,25 @@ with \(f\) typically linear.
 \boxed{\rho(k)=\pi(k)=0,\quad k\ge1.}
 \]
 If \(W_t\sim N(0,\sigma_W^2)\), it is \key{Gaussian White Noise}. A correctly fitted time-series model should leave residuals resembling White Noise: zero mean, constant variance, no serial dependence.
+
+\subsection{Random Walk and Drift}
+
+A \key{random walk} is obtained when the first difference is White Noise:
+\[
+\boxed{(1-B)X_t=E_t\quad\Longleftrightarrow\quad X_t=X_{t-1}+E_t.}
+\]
+Iterating gives \(X_t=X_0+\sum_{j=1}^tE_j\). Hence, for independent innovations with variance \(\sigma_E^2\),
+\[
+E[X_t]=E[X_0],\qquad
+\operatorname{Var}(X_t)=\operatorname{Var}(X_0)+t\sigma_E^2,
+\]
+so the process is non-stationary even though its differences are stationary White Noise. It is the boundary AR(1) case \(\alpha=1\), with a unit root.
+
+With a constant in the differenced equation,
+\[
+\boxed{X_t=c+X_{t-1}+E_t,}
+\]
+the process is a random walk with \key{drift}: \(E[X_t]=E[X_0]+ct\). Thus a non-zero mean of the first-differenced process becomes a linear drift in levels; it is not automatically present and must be included/estimated explicitly.
 
 % ============================================================
 \section{Autoregressive Models AR($p$)}
